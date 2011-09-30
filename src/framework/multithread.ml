@@ -103,11 +103,10 @@ struct
       
       Also we concatenate each [forks lval f args st] for each [f]
       *)
-    let proc_call (fn,ed,tn) sigma (theta:Solver.glob_assign) lval exp args st : Solver.var_domain * Solver.diff * Solver.variable list =
+    let proc_call (fn,ed,tn) sigma (theta:Solver.glob_assign) side lval exp args st : Solver.var_domain * Solver.diff * Solver.variable list =
       let forks = ref [] in
-      let diffs = ref [] in
       let add_var v d = if not (List.mem v.vname !GU.mainfuns) then forks := (v,d) :: !forks in
-      let add_diff g d = diffs := (`G (g,d)) :: !diffs in 
+      let add_diff g d = side (`G (g,d)) in 
       let getctx v= 
         try
           let oldstate = List.concat (List.map (fun m -> match PH.find m tn with [] -> raise A.Deadcode | x -> x) old) in
@@ -122,14 +121,13 @@ struct
           | _ -> Messages.bailwith ("ProcCall: Failed to evaluate function expression "^(sprint 80 (d_exp () exp)))
       in
       let dress (f,es)  = (MyCFG.Function f, SD.lift es) in
-      let start_vals : Solver.diff ref = ref [] in
       let add_function st' f : Spec.Dom.t =
         let add_one_call x =
           if !GU.full_context then
             sigma (dress (f, x)) 
           else begin
             let ctx_st = Spec.context_top x in
-            start_vals := (`L ((MyCFG.FunctionEntry f, SD.lift ctx_st), SD.lift x)) :: !start_vals ;
+            side (`L ((MyCFG.FunctionEntry f, SD.lift ctx_st), SD.lift x));
             sigma (dress (f, ctx_st)) 
           end
         in
@@ -156,9 +154,9 @@ struct
       try 
         let d = List.fold_left add_function (Spec.Dom.bot ()) funs in      
         let fdiff, fvars = prepare_forks phase (fn,ed,tn) !forks in
-        (SD.lift d, fdiff @ !start_vals @ !diffs, fvars)
+        (SD.lift d, fdiff, fvars)
       with 
-				Analyses.Deadcode -> (SD.bot (), !start_vals, [])
+				Analyses.Deadcode -> (SD.bot (), [], [])
     in
     let cfg' n = 
       match n with 
@@ -173,7 +171,7 @@ struct
     (* For each edge we generate a rhs: a function that takes current state
      * sigma and the global state theta; it outputs the new state, delta, and
      * spawned calls. *)      
-    let edge2rhs (edge, pred : MyCFG.edge * MyCFG.node) (sigma, theta: Solver.var_assign * Solver.glob_assign) : Solver.var_domain * Solver.diff * Solver.variable list = 
+    let edge2rhs (edge, pred : MyCFG.edge * MyCFG.node) side (sigma, theta: Solver.var_assign * Solver.glob_assign) : Solver.var_domain * Solver.diff * Solver.variable list = 
       (* This is the key computation, only we need to set and reset current_loc,
        * see below. We call a function to avoid ;-confusion *)
       let eval predvar : Solver.var_domain * Solver.diff * Solver.variable list = 
@@ -186,8 +184,7 @@ struct
         in
         if P.tracking then P.track_with (fun n -> M.warn_all (sprint ~width:80 (dprintf "Line visited more than %d times. State:\n%a\n" n SD.pretty predval)));
         (* gives add_var callback into context so that every edge can spawn threads *)
-        let diffs = ref [] in
-        let add_diff g d = diffs := (`G (g,d)) :: !diffs in 
+        let add_diff g d = side (`G (g,d)) in 
         let getctx v y = 
           try
             let oldstate = List.concat (List.map (fun m -> match PH.find m pred with [] -> raise A.Deadcode | x -> x) old) in
@@ -236,11 +233,11 @@ struct
             | MyCFG.SelfLoop               -> lift (fun ctx -> Spec.intrpt ctx           ) predval'
             | MyCFG.Test   (exp,tv)        -> lift (fun ctx -> Spec.branch ctx exp tv    ) predval'
             | MyCFG.Ret    (ret,fundec)    -> lift (fun ctx -> Spec.return ctx ret fundec) predval'
-            | MyCFG.Proc   (lval,exp,args) -> proc_call (n,edge,pred) sigma theta lval exp args predval'
+            | MyCFG.Proc   (lval,exp,args) -> proc_call (n,edge,pred) sigma theta side lval exp args predval'
             | MyCFG.ASM _                  -> M.warn "ASM statement ignored."; SD.lift predval', [], []
             | MyCFG.Skip                   -> SD.lift predval', [], []
           in
-            l, gd @ diff @ !diffs, sp
+            l, gd @ diff, sp
         with
           | M.StopTheWorld
           | A.Deadcode  -> SD.bot (), [], []
@@ -434,8 +431,7 @@ struct
     let edges = MyCFG.getGlobalInits file in
     let theta x = Spec.Glob.Val.bot () in
     let funs = ref [] in
-    let diffs = ref [] in
-    let add_diff g d = diffs := (`G (g,d)) :: !diffs in 
+    let add_diff g d = failwith "partial invariant not supported for global inits" in 
     let transfer_func (st : Spec.Dom.t) (edge, loc) : Spec.Dom.t = 
       let add_var _ _ = raise (Failure "Global initializers should never spawn threads. What is going on?")  in
       try

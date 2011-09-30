@@ -140,7 +140,6 @@ struct
       else begin
         let local_state = ref (VDom.bot ()) in 
         let constrainOneRHS (f, i) =
-          let (nls,ngd,tc) = f (vEval ((x,f),i), GCache.cached (gEval ((x,f),i))) in
           let doOneGlobalDelta = function
             | `L (v, state) ->
               if not ( VDom.leq state (VDom.bot ()) ) then
@@ -164,6 +163,7 @@ struct
                     GMap.remove gInfl g
                   end
           in
+            let (nls,ngd,tc) = f doOneGlobalDelta   (vEval ((x,f),i), GCache.cached (gEval ((x,f),i))) in
             List.iter doOneGlobalDelta ngd;
             if !GU.eclipse then show_add_work_buf (List.length tc);
             List.iter constrainOneVar tc;
