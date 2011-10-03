@@ -947,7 +947,7 @@ struct
 
   and forkfun ctx (lv: lval option) (f: varinfo) (args: exp list) : (varinfo * Dom.t) list = 
     (* we are going to use Sharir/Pnueli only on single threaded code *)
-    if !Goblintutil.sharirpnueli then [] else
+    if !Goblintutil.sharir_pnueli then [] else
     let cpa,fl = ctx.local in
     match LF.classify f.vname args with 
       (* handling thread creations *)
