@@ -1173,8 +1173,7 @@ struct
 
 end
 
-module Spec = MakeSpec (ConcDomain.Trivial)
-module Main = MakeSpec (ConcDomain.Simple)
+module Main = MakeSpec (ConcDomain.Single)
 
 module BaseMCP = 
   MCP.ConvertToMCPPart

@@ -24,6 +24,16 @@ module Trivial = struct
   let switch x y = x <> y
 end
 
+module Single = struct 
+  include Lattice.Unit
+  let is_multi x = false
+  let is_bad   x = false
+  let get_single () = ()
+  let get_multi () = ()
+  let get_main  () = ()
+  let switch x y = false
+end
+
 module SimpleNames = struct
   let n = 3
   let names = function
