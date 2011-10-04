@@ -19,7 +19,7 @@ struct
   (*priority function*)
   let pry lock = try Hashtbl.find resources lock with Not_found -> print_endline("Priority not found. Using default value -1"); (-1)
   (*lockset -> priority helper*)
-  let names = function (LockDomain.Addr.Addr (x,_) ,_) -> x.vname | _ -> failwith "This (hopefully1) never happens!"
+  let names = function (LockDomain.Addr.Addr (x,_) ,_) -> (GU.IH.find GU.idVar x).vname | _ -> failwith "This (hopefully1) never happens!"
   let resourceset_to_priority = List.fold_left (fun y x -> if (pry x) > y then pry x else y) (min_int)
   (*brutal hack*)
   let is_task = Cilfacade.is_task
@@ -305,7 +305,7 @@ let _ = print_endline ( "Looking for " ^ f.svar.vname) in*)
     let report_race offset acc_list =
         let f  ((loc, fl, write), dom_elem,o) = 
           let lockstr = Mutex.Lockset.short 80 dom_elem in
-	  let my_locks = List.map (function (LockDomain.Addr.Addr (x,_) ,_) -> x.vname | _ -> failwith "This (hopefully2) never happens!" ) (Mutex.Lockset.ReverseAddrSet.elements dom_elem) in
+	  let my_locks = List.map (function (LockDomain.Addr.Addr (x,_) ,_) -> (GU.IH.find GU.idVar x).vname | _ -> failwith "This (hopefully2) never happens!" ) (Mutex.Lockset.ReverseAddrSet.elements dom_elem) in
 	  let pry = List.fold_left (fun y x -> if pry x > y then pry x else y) (min_int) my_locks  in
           let action = if write then "write" else "read" in
           let thread = if Mutex.BS.Flag.is_bad fl then "some thread" else "main thread" in

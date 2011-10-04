@@ -42,7 +42,7 @@ struct
     match m with
       | `Unknown -> raise (MapDomain.Fn_over_All "fold")
       | `Map m -> 
-        let f' id = f (try GU.IH.find GU.idVar id with Not_found -> ignore (Printf.printf "unknown var %d\n" id);raise Not_found) in M.fold f' m d
+        let f' id = f (GU.IH.find GU.idVar id) in M.fold f' m d
   
   let find x = function
     | `Unknown -> VD.top ()
@@ -50,7 +50,6 @@ struct
   
   let remove k = function `Unknown -> `Unknown | `Map m -> `Map (M.remove k.vid m)
   let add k v = function `Unknown -> `Unknown | `Map m -> 
-      ignore (Printf.printf "adding %d:%s\n"k.vid k.vname);
       `Map (try M.modify k.vid (fun _ -> v) m with Not_found -> M.add k.vid v m)
   
   let mem k = function `Unknown -> true | `Map m -> M.mem k.vid m
