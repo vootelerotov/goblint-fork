@@ -68,6 +68,16 @@ struct
     | `Unknown -> `Unknown
     | `Map m -> `Map (List.fold_left (fun m x -> M.add x.vid (f x) m) m xs) 
   
+  let m_merge f x y = 
+		let add_maybe k = function 
+			| None -> (fun m -> m)
+			| Some v -> M.add k v  
+		in
+	  let one = M.fold (fun k v -> add_maybe k (f k (Some v)(try Some (M.find k y) with Not_found -> None))) x M.empty in
+	  M.fold (fun k v m -> if M.mem k x then m else add_maybe k (f k None (Some v)) m) y one
+  
+  let m_for_all p m = M.fold (fun k v o -> o && p k v) m true 
+  
   let join x y = 
     let joiner _ x y =
       match x, y with
@@ -76,7 +86,7 @@ struct
     in 
     match x, y with
       | `Unknown, _ | _, `Unknown -> `Unknown
-      | `Map x, `Map y -> `Map (M.merge joiner x y)
+      | `Map x, `Map y -> `Map (m_merge joiner x y)
 
   let meet x y = 
     let meeter _ x y =
@@ -88,7 +98,7 @@ struct
     in 
     match x, y with
       | `Unknown, x | x, `Unknown -> x
-      | `Map x, `Map y -> `Map (M.merge meeter x y)
+      | `Map x, `Map y -> `Map (m_merge meeter x y)
 
   let leq x y =
     match x, y with 
@@ -96,7 +106,7 @@ struct
       | `Unknown, _ -> false
       | `Map x, `Map y ->
         let p k y = try VD.leq (M.find k x) y with Not_found -> true in
-        M.for_all p y
+        m_for_all p y
   
   let pretty_f short () = function
     | `Unknown -> text "CPA.top"

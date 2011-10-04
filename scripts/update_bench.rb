@@ -2,9 +2,11 @@
 require 'fileutils' 
 
 $analyses = [
+  ["no-context",       "--no-context base"],
+  ["full-context",     "--full-context"],
+  ["round-robin",      "--solver solverConSideRR"],
   ["default",   ""],
-  ["region",    "--with region"],
-  ["shape",     "--with shape"],
+  ["Sharir-Pnueli",    "--sharirpnueli"],
 ]
 maxlen = $analyses.map { |x| x[0].length }.max + 1
 
@@ -17,7 +19,7 @@ bench = "../bench/"
 
 backup = File.join(Dir.getwd,"goblint.script_backup.json")
 json   = File.join(Dir.getwd, "goblint.json")
-FileUtils.mv(json, backup) if File.exists?(json) 
+#FileUtils.mv(json, backup) if File.exists?(json) 
 
 class Project
   attr_reader :id, :name, :group, :path, :params
@@ -230,5 +232,6 @@ $projects.each do |p|
 end
 print_res nil
 puts ("Results: " + $theresultfile)
-FileUtils.mv(backup,json) if File.exists?(backup) 
+#FileUtils.mv(backup,json) if File.exists?(backup) 
+
 
