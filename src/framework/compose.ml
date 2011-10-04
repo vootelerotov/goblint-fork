@@ -12,10 +12,9 @@ struct
   (* here we prefer the older value ... and hope the new one will be GCd *)
   let base_dom_join x y =
     if x == y then x else 
-    let j = Base.Dom.join x y in
-    if Base.Dom.equal j x then x else 
-    if Base.Dom.equal j y then y else
-    j 
+    if Base.Dom.leq y x then x else
+    if Base.Dom.leq x y then y else
+    Base.Dom.join x y
   
   (** the domain is a overloaded set with special join, meet & leq*)
   module Dom = 

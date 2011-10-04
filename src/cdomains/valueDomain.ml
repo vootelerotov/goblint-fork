@@ -212,11 +212,9 @@ struct
   (* here we prefer the older value ... and hope the new one will be GCd *)
   let join x y =
     if x == y then x else 
-    let j = join x y in
-    if equal j x then x else 
-    if equal j y then y else
-    j 
-
+    if leq y x then x else
+    if leq x y then y else
+    join x y
 
   let meet x y = 
     match (x,y) with 
