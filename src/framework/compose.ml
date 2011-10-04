@@ -9,9 +9,18 @@ module PathSensitive (Base: Analyses.Spec)
    and module Glob = Base.Glob
   =
 struct
+  (* here we prefer the older value ... and hope the new one will be GCd *)
+  let base_dom_join x y =
+    if x == y then x else 
+    let j = Base.Dom.join x y in
+    if Base.Dom.equal j x then x else 
+    if Base.Dom.equal j y then y else
+    j 
+  
   (** the domain is a overloaded set with special join, meet & leq*)
   module Dom = 
   struct
+    
     include SetDomain.Make (Base.Dom)
     let name () = "PathSensitive (" ^ name () ^ ")"
     
@@ -40,7 +49,7 @@ struct
         if cardinal joinable = 0 then
           (add b ok, todo)
         else
-          let joint = fold Base.Dom.join joinable b in
+          let joint = fold base_dom_join joinable b in
           (fold remove joinable ok, add joint todo)
       in
       let (ok, todo) = fold f s2 (s1, empty ()) in
@@ -63,7 +72,7 @@ struct
       let f e =
         let l = filter (fun x -> Base.Dom.leq x e) s1 in
         let m = map (fun x -> Base.Dom.widen x e) l in
-        fold Base.Dom.join m e
+        fold base_dom_join m e
       in
       map f s2
 
@@ -72,7 +81,7 @@ struct
       let f e =
         let l = filter (fun x -> Base.Dom.leq x e) s2 in
         let m = map (Base.Dom.narrow e) l in
-        fold Base.Dom.join m (Base.Dom.bot ())
+        fold base_dom_join m (Base.Dom.bot ())
       in
       map f s1
    end
@@ -141,7 +150,7 @@ struct
 
   let leave_func ctx lval fexp fn args after : Dom.t =
     (* we join as a general case -- but it should have been a singleton anyway *)
-    let bbf : Base.Dom.t = Dom.fold Base.Dom.join ctx.local (Base.Dom.bot ()) in
+    let bbf : Base.Dom.t = Dom.fold base_dom_join ctx.local (Base.Dom.bot ()) in
     let leave_and_join nst result = Dom.join result (Dom.singleton (Base.leave_func (set_st ctx bbf spawner) lval fexp fn args nst)) in
     Dom.fold leave_and_join after (Dom.bot ())    
 end                                  
