@@ -208,7 +208,7 @@ struct
   let heap_var loc = AD.from_var (BaseDomain.get_heap_var loc)
 
   let init () = 
-    return_varstore := makeVarinfo false "RETURN" voidType;
+    return_varstore := Goblintutil.makeVarinfo false "RETURN" voidType;
     H.clear BaseDomain.heap_hash
 
   (**************************************************************************

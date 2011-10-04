@@ -38,7 +38,7 @@ struct
   let exp_equal e1 e2 g s = None
 
   let return_var = 
-    let myvar = makeVarinfo false "RETURN" voidType in
+    let myvar = Goblintutil.makeVarinfo false "RETURN" voidType in
       myvar.vid <- -99;
       myvar
 

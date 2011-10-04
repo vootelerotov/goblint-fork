@@ -10,7 +10,7 @@ CIL=@CIL@
 CILLIB=@CIL@/@CILOBJ@
 XML=@XML@
 
-LINK_LIBS  = @LINKLIBS@
+LINK_LIBS  = @LINKLIBS@ 
 CAMLDIR    = @CAMLDIR@ 
 OCAMLDOC   = @OCAMLDOC@
 
@@ -20,8 +20,8 @@ SOURCEDIRS = src/ src/util/ src/domains/ src/cdomains/ src/framework/ \
              src/solvers/ src/analyses/ unittest/ unittest/solver \
              unittest/cdomains unittest/domains
 
-COMPILEFLAGS = @COMPILEFLAGS@ -I $(CILLIB)  
-LINKFLAGS = @COMPILEFLAGS@ -ccopt -L$(CILLIB) -I $(CILLIB)  
+COMPILEFLAGS = @COMPILEFLAGS@ -I $(CILLIB) -package batteries
+LINKFLAGS = @COMPILEFLAGS@ -package batteries -linkpkg -ccopt -L$(CILLIB) -I $(CILLIB)  
 DOCFLAGS = @DOCFLAGS@ -stars -t 'Goblint API documentation' -dot-reduce -dot -html -d doc -v
 
 PROG_MODULES = \

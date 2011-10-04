@@ -44,8 +44,8 @@ let is_ignorable lval =
   try Base.is_immediate_type (Cilfacade.typeOfLval lval) || is_atomic lval
   with Not_found -> false
   
-let big_kernel_lock = LockDomain.Addr.from_var (Cil.makeGlobalVar "[big kernel lock]" Cil.intType)
-let console_sem = LockDomain.Addr.from_var (Cil.makeGlobalVar "[console semaphore]" Cil.intType)
+let big_kernel_lock = LockDomain.Addr.from_var (Goblintutil.makeGlobal "[big kernel lock]" Cil.intType)
+let console_sem = LockDomain.Addr.from_var (Goblintutil.makeGlobal "[console semaphore]" Cil.intType)
 
 module type SpecParam =
 sig
@@ -276,7 +276,7 @@ struct
   let type_inv (c:compinfo) : Lval.CilLval.t list =
     try [Hashtbl.find type_inv_tbl c.ckey,`NoOffset]
     with Not_found ->
-        let i = makeGlobalVar ("(struct "^c.cname^")") (TComp (c,[])) in
+        let i = Goblintutil.makeGlobal ("(struct "^c.cname^")") (TComp (c,[])) in
         Hashtbl.add type_inv_tbl c.ckey i;
         [i, `NoOffset]
 

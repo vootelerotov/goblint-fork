@@ -281,12 +281,33 @@ let old_accesses = ref true
 (** The file where everything is output *)
 let out = ref stdout
 
+
+module HashableInt : BatHashtbl.HashedType with type t = int =
+struct
+  type t = int
+  let equal = (=)
+  let hash x = x
+end
+module IH = BatHashtbl.Make (HashableInt)
+
+let idVar = IH.create 100
+
+let makeVarinfo b n t =
+  let v = makeVarinfo b n t in 
+  IH.add idVar v.vid v;
+  v
+  
+let makeGlobal n t =
+  let g = makeGlobalVar n t in 
+  IH.add idVar g.vid g;
+  g
+
 (* Type invariant variables. *)
 let type_inv_tbl = Hashtbl.create 13 
 let type_inv (c:compinfo) : varinfo =
   try Hashtbl.find type_inv_tbl c.ckey
   with Not_found ->
-      let i = makeGlobalVar ("{struct "^c.cname^"}") (TComp (c,[])) in
+      let i = makeGlobal ("{struct "^c.cname^"}") (TComp (c,[])) in
       Hashtbl.add type_inv_tbl c.ckey i;
       i
 

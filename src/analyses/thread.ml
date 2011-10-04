@@ -98,7 +98,7 @@ struct
   
   (* We denote the main thread by the global thread id variable named "main" *)
   let startstate () = (
-    ConcDomain.ThreadIdSet.singleton (Cil.makeGlobalVar "main" Cil.voidType),
+    ConcDomain.ThreadIdSet.singleton (Goblintutil.makeGlobal "main" Cil.voidType),
     ConcDomain.ThreadsVector.bot())
     
   let otherstate () = Dom.bot ()

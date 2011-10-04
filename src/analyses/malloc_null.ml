@@ -226,7 +226,7 @@ struct
   
   let init () = 
     Goblintutil.malloc_may_fail := true; 
-    return_addr_ :=  Addr.from_var (makeVarinfo false "RETURN" voidType)
+    return_addr_ :=  Addr.from_var (Goblintutil.makeVarinfo false "RETURN" voidType)
 end
 
 module VarEqMCP = 

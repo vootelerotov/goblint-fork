@@ -45,10 +45,20 @@ let end_basic_blocks f =
   let thisVisitor = new allBBVisitor in
   visitCilFileSameGlobals thisVisitor f  
 
+class recordVars = object
+  inherit nopCilVisitor 
+  method vvdec v = GU.IH.add GU.idVar v.vid v; SkipChildren
+  method vstmt _ = SkipChildren
+  method vexpr _ = SkipChildren
+  method vlval _ = SkipChildren
+  method vtype _ = SkipChildren
+end 
+
 let createCFG (fileAST: file) =
   end_basic_blocks fileAST; 
   (* Partial.calls_end_basic_blocks fileAST; *)
   Partial.globally_unique_vids fileAST; 
+  visitCilFileSameGlobals (new recordVars) fileAST;
   iterGlobals fileAST (fun glob -> 
     match glob with
       | GFun(fd,_) -> 

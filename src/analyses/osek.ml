@@ -60,7 +60,7 @@ struct
           let typ = (Str.matched_group 1 line) in
 (*  let _ = print_endline ( "Adding " ^ name) in  *)
 	  Hashtbl.add tasks name (typ,-1,[name]);
-          Hashtbl.add constantlocks name (makeGlobalVar name  Cil.voidType);
+          Hashtbl.add constantlocks name (Goblintutil.makeGlobal name  Cil.voidType);
           Hashtbl.add resources name (-1);
 	  flag := name;
           if typ = "ISR" then irpts := (Cilfacade.getFun name, -1) :: !irpts;
@@ -103,7 +103,7 @@ struct
 	if Str.string_match re line 0 then begin
           let name = (Str.matched_group 1 line) in
           let id = Str.matched_group 2 line in
-	  Hashtbl.add constantlocks id (makeGlobalVar name  Cil.voidType);
+	  Hashtbl.add constantlocks id (Goblintutil.makeGlobal name  Cil.voidType);
 	end;
 	read_info ();
       with 
@@ -374,9 +374,9 @@ let _ = print_endline ( "Looking for " ^ f.svar.vname) in*)
 	prerr_endline "Trampoline headers not found." ;
 	exit 2;
       end;
-      Hashtbl.add constantlocks "DEall" (makeGlobalVar "DEall" Cil.voidType);
-      Hashtbl.add constantlocks "SRall" (makeGlobalVar "SRall" Cil.voidType);
-      Hashtbl.add constantlocks "SRos" (makeGlobalVar "SRos" Cil.voidType);
+      Hashtbl.add constantlocks "DEall" (Goblintutil.makeGlobal "DEall" Cil.voidType);
+      Hashtbl.add constantlocks "SRall" (Goblintutil.makeGlobal "SRall" Cil.voidType);
+      Hashtbl.add constantlocks "SRos" (Goblintutil.makeGlobal "SRos" Cil.voidType);
       Hashtbl.add resources "DEall" (Hashtbl.fold hashmax resources (-1) );
       Hashtbl.add resources "SRall" (Hashtbl.fold hashmax resources (-1) );
       Hashtbl.add resources "SRos" (Hashtbl.fold hashmax resources (-1) ); (*NOT GOOD *)
