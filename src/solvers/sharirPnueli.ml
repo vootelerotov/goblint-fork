@@ -7,7 +7,7 @@ struct
   module CAL = Hashtbl.Make (Basetype.Variables)
   module VAR = Prod (N) (L)
   module SOL = Hashtbl.Make (Prod (N) (L))
-  module WS  = Stack
+  module WS  = Set.Make (VAR)
   
   type solution = L.t SOL.t (* (N,L) -> L *)
   
@@ -26,8 +26,8 @@ struct
   *)
   let solve r e succ start f enter comb is_special =    
     (* 1. Initialize WORK := {(r_1,0)}, --- extended with a list of interesting values *)
-    let work = WS.create () in
-    let _ = List.iter (fun (p,c,_) -> WS.push (r p,c) work) start in
+    let work = Stack.create () in
+    let _ = List.iter (fun (p,c,_) -> Stack.push (r p,c) work) start in
     (* PHI(r_1,0) := 0 --- extended with a list of interesting values *)
     let phi  = SOL.create 255 in
     List.iter (fun (p,c,l) -> SOL.add phi (r p, c) l) start;
@@ -45,14 +45,14 @@ struct
       let phi_m_x = find_bot (m,x) in
       let new_val = (L.join phi_m_x z) in
       SOL.replace phi (m,x) new_val;
-      (if not (L.equal new_val phi_m_x) then WS.push (m,x) work) 
+      (if not (L.equal new_val phi_m_x) then Stack.push (m,x) work) 
     in
 
 
     (* 2. While WORK != {} *)
-    while (not (WS.is_empty work)) do
+    while (not (Stack.is_empty work)) do
       (* remove an element (n,x) from WORK, *)
-      let (n,x) = WS.pop work in
+      let (n,x) = Stack.pop work in
       dbg (fun () -> Pretty.printf "PICK (%a,?)\n\n" N.pretty_trace n (*L.pretty x*));
       
       (* and let y = PHI(n,x) *)
@@ -63,7 +63,7 @@ struct
             let ps = enter n y in (* -- for dynamic calls & entry *)
             let one_call (p, y') =
               dbg (fun () -> Pretty.printf "CALL TO (%s,?)\n" p.Cil.vname (*L.pretty y'x*));
-              CAL.add calls p (n,x);
+              CAL.replace calls p (WS.add (n,x) (try CAL.find calls p with Not_found -> WS.empty));
               (* If z = PHI(e_p,y) is defined, *)
               if SOL.mem phi (e p,y') then
                 let z = SOL.find phi (e p, y') in
@@ -101,7 +101,7 @@ struct
                   in
                   List.iter callsite_succ (succ c)
               in
-              List.iter one_callsite (CAL.find_all calls p)
+              WS.iter one_callsite (try CAL.find calls p with Not_found -> WS.empty)
         (* (c) If n is any other block in some procedure p, then, for each m \in E^0_p - {n}, 
                propagate (x,f_(n,m)(y)) to m *)
           | _ (*`Other*) ->
