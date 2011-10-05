@@ -7,7 +7,7 @@ struct
   module CAL = Hashtbl.Make (Basetype.Variables)
   module VAR = Prod (N) (L)
   module SOL = Hashtbl.Make (Prod (N) (L))
-  module WS  = Set.Make (VAR)
+  module WS  = Stack
   
   type solution = L.t SOL.t (* (N,L) -> L *)
   
@@ -26,7 +26,8 @@ struct
   *)
   let solve r e succ start f enter comb is_special =    
     (* 1. Initialize WORK := {(r_1,0)}, --- extended with a list of interesting values *)
-    let work = ref (List.fold_left (fun x (p,c,_) -> WS.add (r p,c) x) WS.empty start) in
+    let work = WS.create () in
+    let _ = List.iter (fun (p,c,_) -> WS.push (r p,c) work) start in
     (* PHI(r_1,0) := 0 --- extended with a list of interesting values *)
     let phi  = SOL.create 255 in
     List.iter (fun (p,c,l) -> SOL.add phi (r p, c) l) start;
@@ -44,15 +45,14 @@ struct
       let phi_m_x = find_bot (m,x) in
       let new_val = (L.join phi_m_x z) in
       SOL.replace phi (m,x) new_val;
-      (if not (L.equal new_val phi_m_x) then work := WS.add (m,x) !work) 
+      (if not (L.equal new_val phi_m_x) then WS.push (m,x) work) 
     in
 
 
     (* 2. While WORK != {} *)
-    while (not (WS.is_empty !work)) do
+    while (not (WS.is_empty work)) do
       (* remove an element (n,x) from WORK, *)
-      let (n,x) = WS.choose !work in
-      work := WS.remove (n,x) !work;
+      let (n,x) = WS.pop work in
       dbg (fun () -> Pretty.printf "PICK (%a,?)\n\n" N.pretty_trace n (*L.pretty x*));
       
       (* and let y = PHI(n,x) *)
