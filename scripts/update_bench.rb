@@ -2,11 +2,11 @@
 require 'fileutils' 
 
 $analyses = [
-  ["no-context",       "--no-context base"],
-  ["full-context",     "--full-context"],
+  ["no-context",       "--analysis base --noverify --no-context base"],
+  ["full-context",     "--analysis base --noverify --full-context"],
   ["round-robin",      "--solver solverConSideRR"],
-  ["default",   ""],
-  ["Sharir-Pnueli",    "--sharirpnueli"],
+  ["default",   "--analysis base --noverify"],
+  ["Sharir-Pnueli",    "--analysis base --noverify --sharirpnueli"],
 ]
 maxlen = $analyses.map { |x| x[0].length }.max + 1
 

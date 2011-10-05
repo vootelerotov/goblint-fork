@@ -3,56 +3,57 @@ Group: Base
 duff-0.5
 http://google.com
 single-thread/duff-0.5_comb.c
---analysis base 
+--noverify
 
 maradns-1.4.06
 http://google.com
 single-thread/maradns-1.4.06_comb.c
---analysis base 
+--noverify
 
 m-1.4.06zone
 http://google.com
 single-thread/maradns-1.4.06_zoneserver_comb.c
---analysis base 
+--noverify
 
 scz_11_25_08
 http://google.com
 single-thread/scz_11_25_08_comb.c
---analysis base 
+--noverify
 
 wget-1.12
 http://google.com
 single-thread/wget-1.12_comb.c
---analysis base 
+--noverify
 
 Group: Coreutils
 
-cp_comb.c
-http://google.com
-coreutils/cp_comb.c
---analysis base 
-
-dd_comb.c
-http://google.com
-coreutils/dd_comb.c
---analysis base 
 
 ls_comb.c
 http://google.com
 coreutils/ls_comb.c
---analysis base 
+--noverify
+
+cp_comb.c
+http://google.com
+coreutils/cp_comb.c
+--noverify
+
+dd_comb.c
+http://google.com
+coreutils/dd_comb.c
+--noverify 
 
 pr_comb.c
 http://google.com
 coreutils/pr_comb.c
---analysis base 
+--noverify
 
 ptx_comb.c
 http://google.com
 coreutils/ptx_comb.c
---analysis base 
+--noverify
 
 sort_comb.c
 http://google.com
 coreutils/sort_comb.c
---analysis base 
+--noverify

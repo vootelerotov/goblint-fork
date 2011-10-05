@@ -62,6 +62,7 @@ struct
   let map = M.map
   let mapi = M.mapi
   let fold = M.fold
+  let filter p m = M.fold (fun k v m -> if p k v then m else remove k m) m m 
   (* And one less brainy definition *)
   let for_all2 = M.equal
   let equal = for_all2 Range.equal
@@ -255,7 +256,7 @@ struct
   let is_top = M.is_empty
   let is_bot _ = false
 
-  let drop_top = M.filter (fun _ v -> not (Range.is_top v))  
+  let drop_top = filter (fun _ v -> not (Range.is_top v))  
   let join m1 m2 = if m1 == m2 then m1 else drop_top (map2 Range.join m1 m2)
   let meet m1 m2 = if m1 == m2 then m1 else long_map2 Range.meet m1 m2
   
