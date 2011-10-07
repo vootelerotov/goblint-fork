@@ -224,7 +224,7 @@ module Normal (Idx: Printable.S) =
 struct
   type field = fieldinfo
   type idx = Idx.t
-  type t = Addr of (int * (field, idx) offs) | NullPtr | StrPtr | Top | Bot
+  type t = Addr of (varinfo * (field, idx) offs) | NullPtr | StrPtr | Top | Bot
   include Printable.Std
   let name () = "Normal Lvals"
   
@@ -237,15 +237,15 @@ struct
 
   let get_location x =
     match x with 
-      | Addr (x,_) -> (GU.IH.find GU.idVar x).vdecl 
+      | Addr (x,_) -> x.vdecl 
       | _ -> Cil.builtinLoc 
   
   let classify x = 
     match x with
-      | Addr (x,_) when (GU.IH.find GU.idVar x).vglob -> 2
-      | Addr (x,_) when (GU.IH.find GU.idVar x).vdecl.line = -1 -> -1
-      | Addr (x,_) when (GU.IH.find GU.idVar x).vdecl.line = -3 -> 5
-      | Addr (x,_) when (GU.IH.find GU.idVar x).vdecl.line = -4 -> 4
+      | Addr (x,_) when x.vglob -> 2
+      | Addr (x,_) when x.vdecl.line = -1 -> -1
+      | Addr (x,_) when x.vdecl.line = -3 -> 5
+      | Addr (x,_) when x.vdecl.line = -4 -> 4
       | _ -> 1
   
   let class_name n = 
@@ -256,26 +256,26 @@ struct
       |  5 -> "Parameter"
       | -1 -> "Temp"
       |  _ -> "None"        
-  let from_var x = Addr (x.vid, `NoOffset)
+  let from_var x = Addr (x, `NoOffset)
   
-  let from_var_offset (x,y) = Addr (x.vid, y)
+  let from_var_offset x = Addr x
   
   let to_var a =
     match a with
-      | Addr (x,_) -> [(GU.IH.find GU.idVar x)]
+      | Addr (x,_) -> [x]
       | _          -> []
   let to_var_may a =
     match a with
-      | Addr (x,_) -> [(GU.IH.find GU.idVar x)]
+      | Addr (x,_) -> [x]
       | _          -> []
   let to_var_must a = 
     match a with
-      | Addr (x,`NoOffset) -> [(GU.IH.find GU.idVar x)]
+      | Addr (x,`NoOffset) -> [x]
       | _                  -> []
       
   let to_var_offset a =
     match a with
-      | Addr (x,y) -> [((GU.IH.find GU.idVar x),y)]
+      | Addr x -> [x]
       | _      -> []
 
   let get_type_addr (x, ofs) = 
@@ -287,7 +287,7 @@ struct
       | `Field (fld, ofs) -> find_type fld.ftype ofs
       | `Index (idx, ofs) -> find_type (unarray t) ofs
     in
-      find_type (GU.IH.find GU.idVar x).vtype ofs
+      find_type x.vtype ofs
   
   let get_type x =
     match x with
@@ -307,7 +307,7 @@ struct
         | `Field (fld, ofs) -> "." ^ fld.fname ^ off_str ofs
         | `Index (v, ofs) -> "[" ^ Idx.short Goblintutil.summary_length v ^ "]" ^ off_str ofs
     in
-      GU.demangle (GU.IH.find GU.idVar x).Cil.vname ^ off_str offs
+      GU.demangle x.Cil.vname ^ off_str offs
 
   let short _ x = 
     match x with 
@@ -319,8 +319,8 @@ struct
 
   let toXML_f_addr sf (x,y) = 
     let esc = Goblintutil.escape in
-    let typeinf = esc (Pretty.sprint Goblintutil.summary_length (Cil.d_type () (GU.IH.find GU.idVar x).Cil.vtype)) in
-    let info = "id=" ^ esc (string_of_int x) ^ "; type=" ^ typeinf in
+    let typeinf = esc (Pretty.sprint Goblintutil.summary_length (Cil.d_type () x.Cil.vtype)) in
+    let info = "id=" ^ esc (string_of_int x.Cil.vid) ^ "; type=" ^ typeinf in
       Xml.Element ("Leaf", [("text", esc (sf max_int (Addr (x,y)))); ("info", info)],[])
 
   let toXML_f sf x =
@@ -341,7 +341,7 @@ struct
         | `Index (idx, ofs) -> Index (f idx, to_cil ofs)
     in
     match x with
-      | Addr (v,o) -> Lval (Var (GU.IH.find GU.idVar v), to_cil o)
+      | Addr (v,o) -> Lval (Var v, to_cil o)
       | StrPtr -> mkString "a string"
       | NullPtr -> integer 0
       | Top     -> raise Lattice.TopValue 
@@ -390,7 +390,7 @@ struct
       | _      , Bot           -> false
       | NullPtr, NullPtr       -> true
       | StrPtr , StrPtr        -> true
-      | Addr (x,o), Addr (y,u) when x = y -> leq_offs o u
+      | Addr (x,o), Addr (y,u) when x.vid = y.vid -> leq_offs o u
       | _                      -> false
       
   let join x y = 
@@ -407,7 +407,7 @@ struct
       | x         , Bot     -> x
       | NullPtr   , NullPtr -> NullPtr
       | StrPtr    , StrPtr  -> StrPtr
-      | Addr (x,o), Addr (y,u) when x = y -> Addr (x,join_offs o u)
+      | Addr (x,o), Addr (y,u) when x.vid = y.vid -> Addr (x,join_offs o u)
       | _ -> Top
     
   let meet x y = 
@@ -424,7 +424,7 @@ struct
       | x         , Top     -> x
       | NullPtr   , NullPtr -> NullPtr
       | StrPtr    , StrPtr  -> StrPtr
-      | Addr (x,o), Addr (y,u) when x = y -> Addr (y, meet_offs o u)
+      | Addr (x,o), Addr (y,u) when x.vid = y.vid -> Addr (y, meet_offs o u)
       | _ -> Bot
 
 end

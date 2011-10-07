@@ -872,7 +872,7 @@ struct
         | `Index (i,o) -> `Index (toInt i,offsNormal o) 
     in
     match x with
-      | ValueDomain.AD.Addr.Addr (v,o) ->[GU.IH.find GU.idVar v,offsNormal o]
+      | ValueDomain.AD.Addr.Addr (v,o) ->[v,offsNormal o]
       | _ -> []
   
   let addrToLvalSet a = 
