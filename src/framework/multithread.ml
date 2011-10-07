@@ -303,11 +303,12 @@ struct
     let theta x = failwith "SP: partial invariant not supported." in
     let add_no_var _ _ = ()(*we ignore this because base defensively spawns escaped function pointers*) in
     let add_diff _ = failwith "SP: partial invariant not supported" in
-    let getctx v x = 
+    let getctx addvar v x = 
+      let addvar n x = addvar (r n) (SD.lift x) in
       try
         let oldstate = List.concat (List.map (fun m -> match PH.find m v with [] -> raise A.Deadcode | x -> x) old) in
         let oldglob = List.map PHG.find old_g in
-        A.set_preglob (A.set_precomp (A.context top_query x theta [] add_no_var add_diff) oldstate) oldglob  
+        A.set_preglob (A.set_precomp (A.context top_query x theta [] addvar add_diff) oldstate) oldglob  
       with Not_found  -> Messages.warn "Analyzing a program point that was thought to be unreachable.";
                          raise A.Deadcode
     in
@@ -317,7 +318,7 @@ struct
         | MyCFG.Statement {skind = Instr [Call (_,f,_,_)]} ->
             begin try 
               let fs =  
-                match Spec.query (getctx p x') (Queries.EvalFunvar f) with
+                match Spec.query (getctx add_no_var p x') (Queries.EvalFunvar f) with
                   | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
                   | _ -> Messages.bailwith ("Is_special: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
               in
@@ -327,8 +328,8 @@ struct
                | Failure "hd" -> true end
         | _ -> (* the most "special" case *) true
     in 
-    let special v lv f args st =
-      let ctx = getctx v st in
+    let special addvar v lv f args st =
+      let ctx = getctx addvar v st in
       let fs = 
         match Spec.query ctx (Queries.EvalFunvar f) with
           | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
@@ -338,11 +339,11 @@ struct
       let joiner d1 (d2,_,_) = Spec.Dom.join d1 d2 in 
       List.fold_left joiner (Spec.Dom.bot ()) (Spec.special_fn ctx lv f args)    
     in
-    let enter p (x:SD.t) =
+    let enter addvar p (x:SD.t) =
       let x' = SD.unlift x in
       match p with
         | MyCFG.Statement {skind = Instr [Call (lv,f,args,_)]} ->
-            let ctx = getctx p x' in
+            let ctx = getctx addvar p x' in
             let fs = 
               match Spec.query ctx (Queries.EvalFunvar f) with
                 | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
@@ -351,12 +352,12 @@ struct
             List.concat (List.map (fun f -> List.map (fun (_,y) -> (f, SD.lift y)) (Spec.enter_func ctx lv f args)) fs)
         | _ -> failwith "SP: cannot enter a non-call node."
     in 
-    let comb n p x y = 
+    let comb addvar n p x y = 
       let x' = SD.unlift x in
       let y' = SD.unlift y in
       match n with
         | MyCFG.Statement {skind = Instr [Call (lv,f,args,_)]} ->
-            SD.lift (Spec.leave_func (getctx n x') lv f p args y')
+            SD.lift (Spec.leave_func (getctx addvar n x') lv f p args y')
         | _ -> failwith "SP: cannot enter a non-call node."      
     in
     let get_edge n m = 
@@ -367,18 +368,18 @@ struct
         flush stdout;
         failwith "."
     in
-    let f (n,m) v =
+    let f addvar (n,m) v =
       let edge = get_edge n m in
       GU.current_loc := MyCFG.getLoc n ;
       let v' = SD.unlift v in
       let next = 
         match edge with
-          | MyCFG.Proc (l,f,args)        -> special n l f args v'
-          | MyCFG.Entry func             -> Spec.body   (getctx n v') func      
-          | MyCFG.Assign (lval,exp)      -> Spec.assign (getctx n v') lval exp  
-          | MyCFG.SelfLoop               -> Spec.intrpt (getctx n v')           
-          | MyCFG.Test   (exp,tv)        -> Spec.branch (getctx n v') exp tv    
-          | MyCFG.Ret    (ret,fundec)    -> Spec.return (getctx n v') ret fundec
+          | MyCFG.Proc (l,f,args)        -> special addvar n l f args v'
+          | MyCFG.Entry func             -> Spec.body   (getctx addvar n v') func      
+          | MyCFG.Assign (lval,exp)      -> Spec.assign (getctx addvar n v') lval exp  
+          | MyCFG.SelfLoop               -> Spec.intrpt (getctx addvar n v')           
+          | MyCFG.Test   (exp,tv)        -> Spec.branch (getctx addvar n v') exp tv    
+          | MyCFG.Ret    (ret,fundec)    -> Spec.return (getctx addvar n v') ret fundec
           | MyCFG.ASM _                  -> M.warn "ASM statement ignored."; v'
           | MyCFG.Skip                   -> v'
           (*| _ -> failwith "SP: unsupported edge"*)
@@ -392,9 +393,9 @@ struct
         | M.Bailure s -> M.warn_each s; b
         | x -> M.warn_urgent "Oh no! Something terrible just happened"; raise x
     in
-    let f' x y = dolift (fun () -> f x y) (SD.bot ()) y in
-    let enter' x y = dolift (fun () -> enter x y) [] [] in
-    let comb' x y z w = dolift (fun () -> comb x y z w) (SD.bot ()) w in
+    let f' addvar x y = dolift (fun () -> f addvar x y) (SD.bot ()) y in
+    let enter' addvar x y = dolift (fun () -> enter addvar x y) [] [] in
+    let comb' addvar x y z w = dolift (fun () -> comb addvar x y z w) (SD.bot ()) w in
     GU.may_narrow := false ;
     SP.solve r e succ startvars f' enter' comb' is_special
 
