@@ -3,8 +3,9 @@ require 'fileutils'
 
 $analyses = [
   ["Sharir-Pnueli",    "--analysis base --noverify --sharirpnueli"],
-  ["no-context",       "--analysis base --noverify --no-context base"],
-  ["default",   "--analysis base --noverify"],
+  ["no-context",       "--analysis base --noverify --no-context base --no-context escape"],
+  ["default",          "--analysis base --noverify"],
+  ["full-context",     "--analysis base --noverify --full-context"],
 ]
 maxlen = $analyses.map { |x| x[0].length }.max + 1
 

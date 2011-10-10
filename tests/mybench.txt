@@ -1,51 +1,34 @@
-Group: Base
-
-duff-0.5
-http://google.com
-single-thread/duff-0.5_comb.c
---noverify
-
-maradns-1.4.06
-http://google.com
-single-thread/maradns-1.4.06_comb.c
---noverify
-
-m-1.4.06zone
-http://google.com
-single-thread/maradns-1.4.06_zoneserver_comb.c
---noverify
-
-scz_11_25_08
-http://google.com
-single-thread/scz_11_25_08_comb.c
---noverify
-
-wget-1.12
-http://google.com
-single-thread/wget-1.12_comb.c
---noverify
-
 Group: Coreutils
 
 
-ls_comb.c
+cksum_comb.c
 http://google.com
-coreutils/ls_comb.c
+coreutils/cksum_comb.c
 --noverify
 
-cp_comb.c
+cut_comb.c
 http://google.com
-coreutils/cp_comb.c
+coreutils/cut_comb.c
 --noverify
 
-dd_comb.c
+df_comb.c
 http://google.com
-coreutils/dd_comb.c
---noverify 
+coreutils/df_comb.c
+--noverify
 
-pr_comb.c
+du_comb.c
 http://google.com
-coreutils/pr_comb.c
+coreutils/du_comb.c
+--noverify
+
+nohup_comb.c
+http://google.com
+coreutils/nohup_comb.c
+--noverify
+
+tail_comb.c
+http://google.com
+coreutils/tail_comb.c
 --noverify
 
 ptx_comb.c
@@ -53,7 +36,9 @@ http://google.com
 coreutils/ptx_comb.c
 --noverify
 
-sort_comb.c
+dd_comb.c
 http://google.com
-coreutils/sort_comb.c
---noverify
+coreutils/dd_comb.c
+--noverify 
+
+
