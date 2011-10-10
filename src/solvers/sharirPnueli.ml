@@ -29,11 +29,11 @@ struct
   let solve r e succ start f enter comb is_special =    
     (* 1. Initialize WORK := {(r_1,0)}, --- extended with a list of interesting values *)
     let work_N = ref WS.empty in
-    let work_C = ref (List.fold_left (fun w (p,c,_) -> WS.add (r p,c) w) WS.empty start) in
+    let work_C = ref (List.fold_left (fun w (p,c,_) -> WS.add (p,c) w) WS.empty start) in
     let work_E = ref WS.empty in
     (* PHI(r_1,0) := 0 --- extended with a list of interesting values *)
     let phi  = SOL.create 255 in
-    List.iter (fun (p,c,l) -> SOL.add phi (r p, c) l) start;
+    List.iter (fun (p,c,l) -> SOL.add phi (p, c) l) start;
     (* *** *)
     let calls = CAL.create 255 in
 
@@ -72,14 +72,13 @@ struct
       let phi_m_x = find_bot (m,x) in
       if not (L.leq z phi_m_x) then begin
         add_work (m,x); 
-        SOL.replace phi (m,x) (L.join phi_m_x z)
+        SOL.replace phi (m,x) (L.widen phi_m_x (L.join phi_m_x z))
       end
     in
     
     let add_var old n x = 
-      let st = L.join x old in
 (*      ignore (Pretty.printf "spawning %a\nwith state %a\n" N.pretty_trace n L.pretty st); *)
-      propagate st st n   
+      propagate x x n   
     in
 
     (* 2. While WORK != {} *)

@@ -326,7 +326,7 @@ struct
                 LibraryFunctions.use_special (List.hd fs).vname
             with Not_found 
                | Failure "hd" -> true end
-        | _ -> (* the most "special" case *) true
+        | _ -> true
     in 
     let special addvar v lv f args st =
       let ctx = getctx addvar v st in
@@ -397,7 +397,8 @@ struct
     let enter' addvar x y = dolift (fun () -> enter addvar x y) [] [] in
     let comb' addvar x y z w = dolift (fun () -> comb addvar x y z w) (SD.bot ()) w in
     GU.may_narrow := false ;
-    SP.solve r e succ startvars f' enter' comb' is_special
+    SP.solve r e succ startvars f' enter' comb' is_special 
+    
 
   let sp_to_solver_result (r:SD.t SP_SOL.t) : solver_result =
     let vm = Solver.VMap.create (SP_SOL.length r * 2) (SD.bot ()) in
@@ -502,23 +503,34 @@ struct
     let startvars' = List.map (fun (n,e) -> MyCFG.Function n, SD.lift (context_fn (SD.unlift e))) startvars in
     let entrystates = List.map2 (fun (_,e) (n,d) -> (MyCFG.FunctionEntry n,e), d) startvars' startvars in
     let procs = 
-      let f = function
-        | ((MyCFG.FunctionEntry n, e), d) -> (n,e,d)
-        | _ -> failwith "SP: entry states strange."
-      in
+      let f = function ((n, e), d) -> (n,e,d) in
       List.map f 
     in
+    let spsol = ref None in
     let sol,gs = 
       let solve () =
         if !Goblintutil.sharir_pnueli 
-        then sp_to_solver_result (applySP cfg old old_g old_s phase (procs entrystates))
+        then sp_to_solver_result (spsol := Some (applySP cfg old old_g old_s phase (procs entrystates)); (match !spsol with Some c -> c | None -> SP_SOL.create 1))
         else Solver.solve () (system cfg old old_g old_s phase) startvars' entrystates
       in
       if !GU.verbose then print_endline ("Analyzing phase "^string_of_int phase^"!");
       Stats.time "solver" solve () in
-    if !GU.verify && (not !GU.sharir_pnueli) then begin
+    if !GU.verify then begin
       if !GU.verbose then print_endline "Verifying!";
-      Stats.time "verification" (Solver.verify () (system cfg old old_g old_s phase)) (sol,gs)
+      if not !GU.sharir_pnueli 
+      then Stats.time "verification" (Solver.verify () (system cfg old old_g old_s phase)) (sol,gs)
+      else begin
+        let ess = SP_SOL.fold (fun (k,c) v l -> (k,c,v)::l) (match !spsol with Some c -> c | None -> SP_SOL.create 1) [] in
+        let nv = applySP cfg old old_g old_s phase ess in 
+        let ov = (match !spsol with Some c -> c | None -> SP_SOL.create 1) in
+        let check_var k v = 
+          let ov = SP_SOL.find ov k in 
+          if not (SD.equal v ov) then 
+          ignore (Pretty.printf "Fixpoint not reached at %a\nCalculating one more step changes: %a\n" 
+                      Var.pretty_trace k SD.pretty_diff (ov,v))
+        in  
+        SP_SOL.iter check_var nv
+      end
     end;
     if P.tracking then 
       begin 
