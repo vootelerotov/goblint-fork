@@ -294,7 +294,7 @@ struct
     in
       Solver.GMap.iter print_one glob
 
-  let applySP (cfg: MyCFG.cfg) (old : Analyses.local_state list list PH.t list) (old_g : Analyses.global_state list PHG.t list) (old_s : (varinfo * int) list SH.t) phase startvars : SD.t SP_SOL.t =
+  let applySP gs (cfg: MyCFG.cfg) (old : Analyses.local_state list list PH.t list) (old_g : Analyses.global_state list PHG.t list) (old_s : (varinfo * int) list SH.t) phase startvars : SD.t SP_SOL.t =
     let r x = MyCFG.FunctionEntry x in
     let e x = MyCFG.Function x in
     let succ x =
@@ -340,7 +340,7 @@ struct
       List.fold_left joiner (Spec.Dom.bot ()) (Spec.special_fn ctx lv f args)    
     in
     let enter addvar p (x:SD.t) =
-      let x' = SD.unlift x in
+      let x', _ = Spec.sync (getctx addvar p (SD.unlift x))  in
       match p with
         | MyCFG.Statement {skind = Instr [Call (lv,f,args,_)]} ->
             let ctx = getctx addvar p x' in
@@ -371,7 +371,7 @@ struct
     let f addvar (n,m) v =
       let edge = get_edge n m in
       GU.current_loc := MyCFG.getLoc n ;
-      let v' = SD.unlift v in
+      let v', _ = Spec.sync (getctx addvar n (SD.unlift v)) in
       let next = 
         match edge with
           | MyCFG.Proc (l,f,args)        -> special addvar n l f args v'
@@ -397,7 +397,7 @@ struct
     let enter' addvar x y = dolift (fun () -> enter addvar x y) [] [] in
     let comb' addvar x y z w = dolift (fun () -> comb addvar x y z w) (SD.bot ()) w in
     GU.may_narrow := false ;
-    SP.solve r e succ startvars f' enter' comb' is_special 
+    SP.solve gs r e succ startvars f' enter' comb' is_special 
     
 
   let sp_to_solver_result (r:SD.t SP_SOL.t) : solver_result =
@@ -472,9 +472,9 @@ struct
         (old_g : Analyses.global_state list PHG.t list)
         (old_s : (varinfo * int) list SH.t) 
         (startfuns, exitfuns, otherfuns: A.fundecs) =
-	let startstate, more_funs = 
-      if !GU.verbose then print_endline "Initializing globals.";
-      Stats.time "initializers" do_global_inits file in
+	let startstate, more_funs = SD.lift(Spec.startstate ()), [] in
+(*      if !GU.verbose then print_endline "Initializing globals.";
+      Stats.time "initializers" do_global_inits file in*)
     let _ = if M.tracing then M.trace "postinit" "The initial state is: %a\n" SD.pretty startstate else () in
     let otherfuns = 
       if !GU.kernel
@@ -510,7 +510,7 @@ struct
     let sol,gs = 
       let solve () =
         if !Goblintutil.sharir_pnueli 
-        then sp_to_solver_result (spsol := Some (applySP cfg old old_g old_s phase (procs entrystates)); (match !spsol with Some c -> c | None -> SP_SOL.create 1))
+        then sp_to_solver_result (spsol := Some (applySP startstate cfg old old_g old_s phase (procs entrystates)); (match !spsol with Some c -> c | None -> SP_SOL.create 1))
         else Solver.solve () (system cfg old old_g old_s phase) startvars' entrystates
       in
       if !GU.verbose then print_endline ("Analyzing phase "^string_of_int phase^"!");
@@ -521,7 +521,7 @@ struct
       then Stats.time "verification" (Solver.verify () (system cfg old old_g old_s phase)) (sol,gs)
       else begin
         let ess = SP_SOL.fold (fun (k,c) v l -> (k,c,v)::l) (match !spsol with Some c -> c | None -> SP_SOL.create 1) [] in
-        let nv = applySP cfg old old_g old_s phase ess in 
+        let nv = applySP startstate cfg old old_g old_s phase ess in 
         let ov = (match !spsol with Some c -> c | None -> SP_SOL.create 1) in
         let check_var k v = 
           let ov = SP_SOL.find ov k in 

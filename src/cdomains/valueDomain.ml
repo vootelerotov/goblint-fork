@@ -245,6 +245,9 @@ struct
       | (`List x, `List y) -> `List (Lists.widen x y) 
       | (`Blob x, `Blob y) -> `Blob (Blobs.widen x y) 
       | _ -> `Top    
+  let widen x y =
+    let w = widen x y in
+    if equal y w then y else w
 
   let narrow x y =
     match (x,y) with 

@@ -16,11 +16,6 @@ http://google.com
 coreutils/df_comb.c
 --noverify
 
-du_comb.c
-http://google.com
-coreutils/du_comb.c
---noverify
-
 nohup_comb.c
 http://google.com
 coreutils/nohup_comb.c

@@ -97,10 +97,8 @@ struct
     let res = 
     let f_addr (x, offs) = 
       (* get hold of the variable value, either from local or global state *)
-      let var = if (!GU.earlyglobs || Flag.is_multi fl) && is_global a x then
-        match CPA.find x st with
-          | `Bot -> (if M.tracing then M.tracec "get" "Using global invariant.\n"; gs x)
-          | x -> (if M.tracing then M.tracec "get" "Using privatized version.\n"; x)
+      let var = if is_global a x then
+        `Top
       else begin
         if M.tracing then M.tracec "get" "Singlethreaded mode.\n";
         CPA.find x st 
@@ -132,15 +130,8 @@ struct
     let update_one_addr (x, offs) nst: cpa = 
       (* Check if we need to side-effect this one. We no longer generate
        * side-effects here, but the code still distinguishes these cases. *)
-      if (!GU.earlyglobs || Flag.is_multi fl) && is_global a x then 
-        (* Check if we should avoid producing a side-effect, such as updates to
-         * the state when following conditional guards. *)
-        if not effect then nst
-        else begin
-         (* Here, an effect should be generated, but we add it to the local
-          * state, waiting for the sync function to publish it. *)
-         CPA.add x (VD.update_offset (CPA.find x nst) offs value) nst
-        end 
+      if is_global a x then 
+        nst
       else
        (* Normal update of the local state *)
        CPA.add x (VD.update_offset (CPA.find x nst) offs value) nst
@@ -982,7 +973,7 @@ struct
     let cpa,fl as st = ctx.local in
     let make_entry pa context =
       (* If we need the globals, add them *)
-      let new_cpa = if not (!GU.earlyglobs || Flag.is_multi fl) then CPA.filter_class 2 cpa else CPA.bot () in 
+      let new_cpa = CPA.bot () in 
       (* Assign parameters to arguments *)
       let new_cpa = CPA.add_list pa new_cpa in
       let new_cpa = CPA.add_list_fun context (fun v -> CPA.find v cpa) new_cpa in

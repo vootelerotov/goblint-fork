@@ -15,7 +15,11 @@ struct
     if Base.Dom.leq y x then x else
     if Base.Dom.leq x y then y else
     Base.Dom.join x y
-  
+    
+  let base_dom_widen x y =
+    let w = Base.Dom.widen x y in
+    if Base.Dom.equal y w then y else w
+    
   (** the domain is a overloaded set with special join, meet & leq*)
   module Dom = 
   struct
@@ -70,7 +74,7 @@ struct
     let widen s1 s2 = 
       let f e =
         let l = filter (fun x -> Base.Dom.leq x e) s1 in
-        let m = map (fun x -> Base.Dom.widen x e) l in
+        let m = map (fun x -> base_dom_widen x e) l in
         fold base_dom_join m e
       in
       map f s2

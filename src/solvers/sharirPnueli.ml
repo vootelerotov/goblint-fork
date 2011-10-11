@@ -26,11 +26,11 @@ struct
      enter -- node and start state pairs of node and prev state
      comb -- state of proc, pre call state, and fun return state
   *)
-  let solve r e succ start f enter comb is_special =    
+  let solve gs r e succ start f enter comb is_special =    
     (* 1. Initialize WORK := {(r_1,0)}, --- extended with a list of interesting values *)
-    let work_N = ref WS.empty in
-    let work_C = ref (List.fold_left (fun w (p,c,_) -> WS.add (p,c) w) WS.empty start) in
-    let work_E = ref WS.empty in
+   (* let work_N = ref WS.empty in*)
+    let work(*_C*) = ref (List.fold_left (fun w (p,c,_) -> WS.add (p,c) w) WS.empty start) in
+(*     let work_E = ref WS.empty in *)
     (* PHI(r_1,0) := 0 --- extended with a list of interesting values *)
     let phi  = SOL.create 255 in
     List.iter (fun (p,c,l) -> SOL.add phi (p, c) l) start;
@@ -41,13 +41,13 @@ struct
     let find_bot v =  if SOL.mem phi v then SOL.find phi v else L.bot () in
     
     let add_work (n,x) =
-      match N.kind n with 
-        | `ProcCall ->
-            work_C := WS.add (n,x) !work_C
-        | `ExitOfProc _ ->  
+     (* match N.kind n with 
+        | `ProcCall ->*)
+            work(*_C*) := WS.add (n,x) !work(*_C*)
+  (*      | `ExitOfProc _ ->  
             work_E := WS.add (n,x) !work_E
         | _ ->  
-            work_N := WS.add (n,x) !work_N       
+            work_N := WS.add (n,x) !work_N       *)
     in
     let choose_from work =
       let (n,x) = WS.choose !work in
@@ -55,12 +55,12 @@ struct
       (n,x)
     in    
     let choose () =
-       if not (WS.is_empty !work_N) 
-       then choose_from work_N
-       else if not (WS.is_empty !work_E)  
+       if not (WS.is_empty !work(*_N*)) 
+       then choose_from work(*_N*)
+       (*else if not (WS.is_empty !work_E)  
        then choose_from work_E
        else if not (WS.is_empty !work_C) 
-       then choose_from work_C
+       then choose_from work_C*)
        else raise Finished
     in
     
@@ -70,15 +70,16 @@ struct
       (* propagate (x,z) to m [ By this we mean: assign PHI(m,x) := PHI(m,x) /\ z where undefined PHI(m,x) is 
         interpreted as \Omega; if the value has changed, then add (m,x) to WORK]*)
       let phi_m_x = find_bot (m,x) in
-      if not (L.leq z phi_m_x) then begin
+      let j = L.join phi_m_x z in
+      if not (L.equal phi_m_x j) then begin
         add_work (m,x); 
-        SOL.replace phi (m,x) (L.widen phi_m_x (L.join phi_m_x z))
+        SOL.replace phi (m,x) (L.widen phi_m_x j)
       end
     in
     
     let add_var old n x = 
-(*      ignore (Pretty.printf "spawning %a\nwith state %a\n" N.pretty_trace n L.pretty st); *)
-      propagate x x n   
+      let st = x in
+      propagate st st n  
     in
 
     (* 2. While WORK != {} *)
@@ -97,7 +98,7 @@ struct
               dbg (fun () -> Pretty.printf "CALL TO (%s,?)\n" p.Cil.vname (*L.pretty y'x*));
               CAL.replace calls p (WS.add (n,x) (try CAL.find calls p with Not_found -> WS.empty));
               (* If z = PHI(e_p,y) is defined, *)
-              if SOL.mem phi (e p,y') then
+              if try not (L.is_bot (SOL.find phi (e p,y'))) with Not_found -> false then
                 let z = SOL.find phi (e p, y') in
                 (* let m be the unique block such that (n,m)\in E^1_q (m=succ n), and propagate (x,z) to m 
                   [ By this we mean: assign PHI(m,x) := PHI(m,x) /\ z where undefined PHI(m,x) is 
@@ -129,7 +130,7 @@ struct
                     let oldval = find_bot (m,u) in
                     let y' = comb (add_var y) c p pval y  in
                     dbg (fun () -> Pretty.printf "OLD:%a\n\nCALL:%a\n\nNEW:%a\n\n\n" L.pretty oldval L.pretty x L.pretty y');
-                    if not (L.equal oldval y) then propagate u y' m
+                    propagate u y' m
                   in
                   List.iter callsite_succ (succ c)
               in
