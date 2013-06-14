@@ -1,17 +1,17 @@
 (** Similar to control.ml, but OLD *)
 
+open Gil
+open Json
+open Pretty
+open GobConfig
+
 module A = Analyses
-module M = Messages
+module M = GMessages
 module P = Progress
 module GU = Goblintutil
 module Glob = Basetype.Variables
 module Stmt = Basetype.CilStmt
 module Func = Basetype.CilFun
-
-open Cil
-open Json
-open Pretty
-open GobConfig
 
 (** Forward analysis using a specification [Spec] *)
 module Forward 
@@ -129,7 +129,7 @@ struct
     in
     d_ac
   let report_access x ac =
-    (*Messages.report (Pretty.sprint 80 (d_ac () ac));*)
+    (*GMessages.report (Pretty.sprint 80 (d_ac () ac));*)
     let old_set = try CtxHash.find context_tbl (fst x) with Not_found -> VarSet.empty in
     CtxHash.replace context_tbl (fst x) (VarSet.add x old_set);
     BatHashtbl.replace access_tbl (fst x, ac) ()
@@ -201,8 +201,8 @@ struct
           incr no;
           let dmsg = dprintf "Problem %d: Data race between %a and %a 'with lockset:'" !no d_ac ac1 d_ac ac2 in
           let msg = sprint 80 dmsg in
-          Messages.print_msg msg (MyCFG.getLoc x1);
-          Messages.print_msg msg (MyCFG.getLoc x2);
+          GMessages.print_msg msg (MyCFG.getLoc x1);
+          GMessages.print_msg msg (MyCFG.getLoc x2);
         end else incr yes
       end else
         incr trivial
@@ -267,13 +267,13 @@ struct
           let oldglob = List.map (fun (h,t) x -> try PHG.find h x with Not_found -> t) old_g in
           let reporter = if (get_bool "exp.forward") then report_access (n,es) else report_access (tn,es) in
           A.set_preglob (A.set_precomp (A.context top_query v theta [] add_var add_diff reporter) oldstate) oldglob 
-        with Not_found  -> Messages.warn "Analyzing a program point that was thought to be unreachable.";
+        with Not_found  -> GMessages.warn "Analyzing a program point that was thought to be unreachable.";
                            raise A.Deadcode
       in
       let funs  = 
         match Spec.query (getctx st) (Queries.EvalFunvar exp) with
           | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
-          | _ -> Messages.bailwith ("ProcCall: Failed to evaluate function expression "^(sprint 80 (d_exp () exp)))
+          | _ -> GMessages.bailwith ("ProcCall: Failed to evaluate function expression "^(sprint 80 (d_exp () exp)))
       in
       let dress (f,es)  = (MyCFG.Function f, HCSD.lift (SD.lift es)) in
       let add_function st' f : Spec.Dom.t =
@@ -346,7 +346,7 @@ struct
             let oldstate = List.concat (List.map (fun m -> match PH.find m pred with [] -> raise A.Deadcode | x -> x) old) in
             let oldglob = List.map (fun (h,t) x -> try PHG.find h x with Not_found -> t) old_g in
             A.set_preglob (A.set_precomp (A.context top_query v theta [] y add_diff (report_access predvar)) oldstate) oldglob 
-          with Not_found  -> Messages.warn "Analyzing a program point that was thought to be unreachable.";
+          with Not_found  -> GMessages.warn "Analyzing a program point that was thought to be unreachable.";
                              raise A.Deadcode
         in
         let lift f pre =        
@@ -357,7 +357,7 @@ struct
           x, z
         in
         try
-          if !Messages.worldStopped then raise M.StopTheWorld else
+          if !GMessages.worldStopped then raise M.StopTheWorld else
           begin match pred with
             | MyCFG.Statement s -> Cilfacade.currentStatement := s 
             | _ -> ()
@@ -515,7 +515,7 @@ struct
         let oldglob = List.map (fun (h,t) x -> try PHG.find h x with Not_found -> t) old_g in
     		let undefined _ = failwith "sharir-pnueli does not support our new accessing system" in
         A.set_preglob (A.set_precomp (A.context top_query x theta [] add_no_var add_diff undefined) oldstate) oldglob  
-      with Not_found  -> Messages.warn "Analyzing a program point that was thought to be unreachable.";
+      with Not_found  -> GMessages.warn "Analyzing a program point that was thought to be unreachable.";
                          raise A.Deadcode
     in
     let is_special p x =
@@ -526,7 +526,7 @@ struct
               let fs =  
                 match Spec.query (getctx p x') (Queries.EvalFunvar f) with
                   | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
-                  | _ -> Messages.bailwith ("Is_special: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
+                  | _ -> GMessages.bailwith ("Is_special: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
               in
               let _  = List.map Cilfacade.getdec fs in
                 LibraryFunctions.use_special (List.hd fs).vname
@@ -539,7 +539,7 @@ struct
       let fs = 
         match Spec.query ctx (Queries.EvalFunvar f) with
           | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
-          | _ -> Messages.bailwith ("Special: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
+          | _ -> GMessages.bailwith ("Special: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
       in
       let f = List.hd fs in
       let joiner d1 (d2,_,_) = Spec.Dom.join d1 d2 in 
@@ -553,7 +553,7 @@ struct
             let fs = 
               match Spec.query ctx (Queries.EvalFunvar f) with
                 | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
-                | _ -> Messages.bailwith ("Enter: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
+                | _ -> GMessages.bailwith ("Enter: Failed to evaluate function expression "^(sprint 80 (d_exp () f)))
             in
             List.concat (List.map (fun f -> List.map (fun (_,y) -> (f, SD.lift y)) (Spec.enter_func ctx lv f args)) fs)
         | _ -> failwith "SP: cannot enter a non-call node."

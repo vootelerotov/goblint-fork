@@ -1,4 +1,4 @@
-open Cil
+open Gil
 open Pretty
 
 module GU = Goblintutil
@@ -21,7 +21,7 @@ let rec listify ofs =
   match ofs with 
     | `NoOffset -> []
     | `Field (x,ofs) -> x :: listify ofs
-    | _ -> Messages.bailwith "Indexing not supported here!"
+    | _ -> GMessages.bailwith "Indexing not supported here!"
   
 module Offset (Idx: IntDomain.S) =
 struct
@@ -638,7 +638,7 @@ struct
       match a,b with
         | `NoOffset , `NoOffset -> true
         | `Field (f1,o1), `Field (f2,o2) when f1.fname == f2.fname -> eq o1 o2
-        | `Index (i1,o1), `Index (i2,o2) when Expcompare.compareExp i1 i2 -> eq o1 o2
+        | `Index (i1,o1), `Index (i2,o2) when GExpcompare.compareExp i1 i2 -> eq o1 o2
         | _ -> false
     in
     x1.vid=x2.vid && eq o1 o2

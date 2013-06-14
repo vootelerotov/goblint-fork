@@ -1,6 +1,6 @@
 (** How to generate constraints for a solver using specifications described in [Analyses]. *)
 
-open Cil
+open Gil
 open MyCFG
 open Pretty
 open Analyses
@@ -212,7 +212,7 @@ struct
 
   let common_ctx (v,c) u (getl:lv -> ld) sidel getg sideg : (D.t, G.t) ctx2 = 
     let pval = getl (u,c) in     
-    if !Messages.worldStopped then raise M.StopTheWorld;
+    if !GMessages.worldStopped then raise M.StopTheWorld;
     (* now watch this ... *)
     let rec ctx = 
       { ask2     = query
@@ -286,7 +286,7 @@ struct
       match ctx.ask2 (Queries.EvalFunvar e) with 
         | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
         | `Bot -> []
-        | _ -> Messages.bailwith ("ProcCall: Failed to evaluate function expression "^(sprint 80 (d_exp () e)))
+        | _ -> GMessages.bailwith ("ProcCall: Failed to evaluate function expression "^(sprint 80 (d_exp () e)))
     in
     let one_function f = 
       let has_dec = try ignore (Cilfacade.getdec f); true with Not_found -> false in        
@@ -315,7 +315,7 @@ struct
     let _       = Tracing.current_loc := getLoc u in
     let d       = try tf (v,c) (e,u) getl sidel getg sideg 
                   with M.StopTheWorld -> D.bot ()
-                     | M.Bailure s -> Messages.warn_each s; (getl (u,c))  in
+                     | M.Bailure s -> GMessages.warn_each s; (getl (u,c))  in
     let _       = Tracing.current_loc := old_loc in 
       d
   

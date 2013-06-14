@@ -1,6 +1,6 @@
 open Pretty
-open Cil
-module ME = Messages
+open Gil
+module ME = GMessages
 
 module Stack (VD: Lattice.S) =
 struct

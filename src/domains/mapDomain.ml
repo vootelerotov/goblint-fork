@@ -2,7 +2,7 @@
 
 open GobConfig
 open Pretty
-module ME = Messages
+module ME = GMessages
 module GU = Goblintutil
 
 module type S =

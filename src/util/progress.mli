@@ -15,7 +15,7 @@ val track_with: (int -> unit) -> unit
 val track_with_profile: unit -> unit
 (** Print out profiling info collected by {!track_with}. *)
 
-val track_call : Cil.varinfo -> int -> unit
+val track_call : Gil.varinfo -> int -> unit
 (** *)
 
 val track_call_profile : unit -> unit 

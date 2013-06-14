@@ -1,6 +1,6 @@
 (** Globally accessible flags and utility functions. *)
 
-open Cil
+open Gil
 open Pretty
 open GobConfig
 

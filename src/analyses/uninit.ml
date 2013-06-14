@@ -1,12 +1,12 @@
 (** Local variable initialization analysis. *)
 
-module M = Messages
-module BS = Base.Main
+module M = GMessages
+module BS = GBase.Main
 module AD = ValueDomain.AD
 module IdxDom = ValueDomain.IndexDomain
 module Offs = ValueDomain.Offs
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
@@ -42,7 +42,7 @@ struct
   let access_address ask write lv : BS.extra =
     match ask (Queries.MayPointTo (AddrOf lv)) with
       | `LvalSet a when not (Queries.LS.is_top a) -> 
-          let to_extra (v,o) xs = (v, Base.Offs.from_offset (conv_offset o), write) :: xs  in
+          let to_extra (v,o) xs = (v, GBase.Offs.from_offset (conv_offset o), write) :: xs  in
           Queries.LS.fold to_extra a [] 
       | _ -> 
           M.warn "Access to unknown address could be global"; []
@@ -87,7 +87,7 @@ struct
      let do_exp e = 
        match ask (Queries.ReachableFrom e) with
          | `LvalSet a when not (Queries.LS.is_top a) -> 
-            let to_extra (v,o) xs = (v, Base.Offs.from_offset (conv_offset o), true) :: xs  in
+            let to_extra (v,o) xs = (v, GBase.Offs.from_offset (conv_offset o), true) :: xs  in
             Queries.LS.fold to_extra a [] 
          (* Ignore soundness warnings, as invalidation proper will raise them. *)
          | _ -> []
@@ -124,7 +124,7 @@ struct
         List.exists (is_prefix_of a) (Addr.to_var_offset addr)
       in
       if Dom.exists f st then begin 
-        Messages.report ("Uninitialized variable " ^ (Addr.short 80 (Addr.from_var_offset a)) ^ " accessed.");
+        GMessages.report ("Uninitialized variable " ^ (Addr.short 80 (Addr.from_var_offset a)) ^ " accessed.");
         false
       end else
         t in  

@@ -3,7 +3,7 @@
 module GU = Goblintutil
 module LF = LibraryFunctions
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 

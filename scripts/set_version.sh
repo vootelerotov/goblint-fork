@@ -7,11 +7,11 @@ if [ ! -f src/version.ml ]; then
   echo "let cil = \"unknown\"" >> src/version.ml
 fi
 
-if [ ! -f src/config.ml ]; then
-  echo "let tracing = false" > src/config.ml
-  echo "let tracking = false" >> src/config.ml
-  echo "let track_n = 2" >> src/config.ml
-  echo "let experimental = false" >> src/config.ml
+if [ ! -f src/gConfig.ml ]; then
+  echo "let tracing = false" > src/gConfig.ml
+  echo "let tracking = false" >> src/gConfig.ml
+  echo "let track_n = 2" >> src/gConfig.ml
+  echo "let experimental = false" >> src/gConfig.ml
 fi
 
 if [ $VERSION ]; then

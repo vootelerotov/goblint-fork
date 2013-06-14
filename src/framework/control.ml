@@ -1,6 +1,6 @@
 (** An analyzer that takes the CFG from [MyCFG], a solver from [Selector], constraints from [Constraints] (using the specification from [MCP]) *) 
 
-open Cil
+open Gil
 open MyCFG
 open Pretty
 open Analyses
@@ -53,7 +53,7 @@ struct
             Result.add res p (LT.singleton (es,state,fundec))
           (* If the function is not defined, and yet has been included to the
            * analysis result, we generate a warning. *)
-        with Not_found -> Messages.warn ("Undefined function has escaped.")
+        with Not_found -> GMessages.warn ("Undefined function has escaped.")
       in
         LHT.iter add_local_var h;
         res
@@ -228,7 +228,7 @@ struct
     if (get_bool "dbg.verbose") then
       print_endline ("Solving the constraint system with " ^ get_string "solver" ^ ".");
     Goblintutil.timeout do_analyze () (float_of_int (get_int "dbg.timeout"))
-      (fun () -> Messages.waitWhat "Timeout reached!");
+      (fun () -> GMessages.waitWhat "Timeout reached!");
   
     Spec.finalize ();
     

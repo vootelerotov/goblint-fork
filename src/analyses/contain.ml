@@ -1,6 +1,6 @@
 (** Protection using 'private' field modifier in C++.  *)
 
-open Cil 
+open Gil 
 open Pretty
 open Analyses
 open GobConfig
@@ -87,7 +87,7 @@ struct
     in (*read CXX.json; FIXME: use mangled names including namespaces*)
 		let json=
     match List.filter (fun x -> Str.string_match (Str.regexp ".*CXX\\.json$") x 0) !Goblintutil.jsonFiles with
-      | [] -> Messages.bailwith "Containment analysis needs a CXX.json file."
+      | [] -> GMessages.bailwith "Containment analysis needs a CXX.json file."
       | f :: _ ->
 		begin
     try 
@@ -111,7 +111,7 @@ struct
 			| [] -> ()
       | f :: _ ->
     try
-			Messages.report "Problems for safe objecst from SAFE.json are suppressed!";
+			GMessages.report "Problems for safe objecst from SAFE.json are suppressed!";
 			let safe_tbl = objekt (JsonParser.value JsonLexer.token (Lexing.from_channel (open_in f))) in
       Object.iter (add_htbl_re Dom.safe_vars) !(objekt !(field safe_tbl "variables"));
       Object.iter (add_htbl_re Dom.safe_methods) !(objekt !(field safe_tbl "methods"));
@@ -294,12 +294,12 @@ struct
 			end
     else			
     begin
-      (*Messages.report("CHECK METHOD : "^f.svar.vname);*)
+      (*GMessages.report("CHECK METHOD : "^f.svar.vname);*)
 			(*if Dom.is_top st then failwith "ARGH!";*)
       if (Dom.is_public_method_name f.svar.vname) (*|| is_fptr f.svar ctx*) then
 			begin
 				(*printf ("P");*)  
-				(*Messages.report("PUBLIC METHOD : "^f.svar.vname);*)
+				(*GMessages.report("PUBLIC METHOD : "^f.svar.vname);*)
         add_analyzed_fun f Dom.analyzed_funs; (*keep track of analyzed funs*)
 				if Dom.is_bot ctx.local && not (islocal_notmain f.svar.vname ctx.global) 
 				then 
@@ -310,7 +310,7 @@ struct
       else
 			begin
         (*rintf ("p");*)  
-        (*Messages.report("PRIVATE METHOD : "^f.svar.vname);*)
+        (*GMessages.report("PRIVATE METHOD : "^f.svar.vname);*)
         (*Dom.report("Dom : "^sprint 80 (Dom.pretty () ctx.local)^"\n");*)
         if not (danger_bot ctx) then
 				begin 
@@ -505,7 +505,7 @@ struct
     end 
   
   let eval_funvar ctx fval: varinfo list = (*also called for ignore funs*)
-		(*Messages.report (sprint 160 (d_exp () fval) );*)
+		(*GMessages.report (sprint 160 (d_exp () fval) );*)
 		if danger_bot ctx then [] else
 		let fd,st,gd = ctx.local in
     match fval with
@@ -513,11 +513,11 @@ struct
       | Lval (Mem e,NoOffset)  -> (*fptr!*)
                             if not ((get_bool "ana.cont.localclass")) then [Dom.unresFunDec.svar]
                             else
-		    	(*Messages.report("fcheck vtbl : "^sprint 160 (d_exp () e));*)
+		    	(*GMessages.report("fcheck vtbl : "^sprint 160 (d_exp () e));*)
 			    let vtbl_lst = get_vtbl e (fd,st,gd) ctx.global in
 			    if not (vtbl_lst=[]) then
 					begin
-						(*List.iter (fun x -> Messages.report("VFUNC_CALL_RESOLVED : "^x.vname)) vtbl_lst;*)
+						(*List.iter (fun x -> GMessages.report("VFUNC_CALL_RESOLVED : "^x.vname)) vtbl_lst;*)
 						vtbl_lst
 					end
 					else 
@@ -526,18 +526,18 @@ struct
 					let flds_bot = ContainDomain.FieldSet.is_bot flds in				
 					if cft && flds_bot then
 					begin	
-				    (*Messages.report("fptr cft : "^string_of_bool cft);*)
+				    (*GMessages.report("fptr cft : "^string_of_bool cft);*)
 				    let fns = Dom.get_fptr_items ctx.global in
 						let add_svar x y = 
 						   match ContainDomain.FuncName.from_fun_name x with
-								| Some x -> Messages.report ("fptr check: "^x.vname );(x)::y
+								| Some x -> GMessages.report ("fptr check: "^x.vname );(x)::y
 								| _ -> y
 						in
 						ContainDomain.VarNameSet.fold (fun x y ->  add_svar x y) fns []
 					end 
 					else
 					begin
-						(*Messages.report("VARS:");*)
+						(*GMessages.report("VARS:");*)
             let vars = Dom.get_vars e in
 						let rvs =
 							List.fold_left (fun y x -> ContainDomain.ArgSet.join (Dom.Danger.find x st) y)  (ContainDomain.ArgSet.bot ()) vars 

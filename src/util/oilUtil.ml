@@ -1,5 +1,5 @@
-open Cil
-open Messages
+open Gil
+open GMessages
 open GobConfig
 open Pretty
 

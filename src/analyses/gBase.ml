@@ -1,11 +1,11 @@
 (** Value analysis + multi-threadedness analysis.  *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 open GobConfig
 module A = Analyses
-module M = Messages
+module M = GMessages
 module H = Hashtbl
 module Q = Queries
 
@@ -131,7 +131,11 @@ struct
       if M.tracing then M.traceu "get" "Result: %a\n" VD.pretty res;
       res
 
-  let is_always_unknown variable = variable.vstorage = Extern || Ciltools.is_volatile_tp variable.vtype
+  (* from cil/src/ext/ciltools.ml *)
+  let is_volatile_tp tp =
+    List.exists (function (Attr("volatile",_)) -> true 
+                   | _ -> false) (typeAttrs tp) 
+  let is_always_unknown variable = variable.vstorage = Extern || is_volatile_tp variable.vtype
 
   let update_variable variable value state =
     if ((get_bool "exp.volatiles_are_top") && (is_always_unknown variable)) then 
@@ -1028,7 +1032,7 @@ struct
       | Q.EvalFunvar e ->
         begin
           let fs = eval_funvar ctx e in
-(*          Messages.report ("Base: I should know it! "^string_of_int (List.length fs));*)
+(*          GMessages.report ("Base: I should know it! "^string_of_int (List.length fs));*)
           `LvalSet (List.fold_left (fun xs v -> Q.LS.add (v,`NoOffset) xs) (Q.LS.empty ()) fs)
         end
       | Q.EvalInt e -> begin

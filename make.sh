@@ -7,9 +7,10 @@ scripts/set_version.sh
 TARGET=src/goblint
 FLAGS="-no-links -use-ocamlfind -j 8 -no-log -ocamlopt ocamlopt.opt"
 OCAMLBUILD=ocamlbuild
+FRAMA="/usr/local/lib/frama-c"
 
 ocb() {
-  $OCAMLBUILD $FLAGS $*
+  OCAMLFIND_IGNORE_DUPS_IN="$FRAMA" $OCAMLBUILD $FLAGS $*
 }
 
 rule() {
@@ -33,6 +34,9 @@ rule() {
     byte)    ocb $TARGET.byte &&
              cp _build/$TARGET.byte goblint.byte
              ;;
+    plug*)   FLAGS="-cflags -for-pack,Goblint -cflags -I,$FRAMA -lflags -I,$FRAMA $FLAGS";
+             ocb frama.cmxs && sudo mv _build/src/frama.cmxs $FRAMA/plugins/Goblint.cmxs
+             ;;
     all)     ocb $TARGET.native $TARGET.byte &&
              cp _build/$TARGET.native goblint &&
              cp _build/$TARGET.byte goblint.byte
@@ -48,16 +52,23 @@ rule() {
     *)       echo "Unknown action '$1'. Try clean, opt, debug, profile, byte, or doc.";;
   esac; }
 
-ls -1 src/*/*.ml | perl -pe 's/.*\/(.*)\.ml/open \u$1/g' > $TARGET.ml
-echo "open Maingoblint" >> $TARGET.ml
+create_deps() {
+  ls -1 src/*/*.ml | perl -pe 's/.*\/(.*)\.ml/open \u$1/g' > $TARGET.ml
+  case $1 in
+    plug*) echo "open Frama" >> $TARGET.ml ;;
+    *)     echo "open Maingoblint" >> $TARGET.ml ;;
+  esac
+}
 
 if [ $# -eq 0 ]; then
+  create_deps all;
   rule all
 else
   while [ $# -gt 0 ]; do
+    create_deps $1;
     rule $1;
     shift 
   done
 fi
 
-rm -f $TARGET.ml
+#rm -f $TARGET.ml

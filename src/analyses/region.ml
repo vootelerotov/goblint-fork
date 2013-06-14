@@ -1,6 +1,6 @@
 (** Assigning static regions to dynamic memory. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
@@ -8,7 +8,7 @@ module Equ = MusteqDomain.Equ
 module RegMap = RegionDomain.RegMap
 module RegPart = RegionDomain.RegPart
 module Reg = RegionDomain.Reg
-module BS  = Base.Main
+module BS  = GBase.Main
 
 module Spec =
 struct
@@ -47,7 +47,7 @@ struct
           let ev = Reg.eval_exp exp in
           let to_exp (v,f) = (v,Lval.Fields.to_offs' f) in
           List.map to_exp (Reg.related_globals ev (part,reg))
-      | `Top -> Messages.warn "Region state is broken :("; []
+      | `Top -> GMessages.warn "Region state is broken :("; []
       | `Bot -> []
       
   let is_bullet exp part (st,_) : bool =

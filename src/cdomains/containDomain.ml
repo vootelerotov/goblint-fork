@@ -1,4 +1,4 @@
-open Cil
+open Gil
 open Pretty
 open GobConfig
 
@@ -41,7 +41,7 @@ let report x =
     let loc = !Tracing.current_loc in
       if (not (loc.file ="LLVM INTERNAL") || not (loc.line=1)) && 
 			!Goblintutil.in_verifying_stage then (*filter noise*)
-    Messages.report ("CW: "^x)          
+    GMessages.report ("CW: "^x)          
  
 module FieldVars = 
 struct	
@@ -175,7 +175,7 @@ struct
         let loc = !Tracing.current_loc in
           if (not (loc.file ="LLVM INTERNAL") || not (loc.line=1)) && 
 					(!Goblintutil.in_verifying_stage|| !final) then (*filter noise*)
-        Messages.report ("CW: "^x)
+        GMessages.report ("CW: "^x)
 	
   module Danger = 
   struct 
@@ -262,13 +262,13 @@ struct
 		    if enable_dbg && loc.line>=dbg_line_start && loc.line<=dbg_line_end then
 				(*counter := !counter + 1;*)        
           if not (loc.file ="LLVM INTERNAL") || not (loc.line=1)  then (*filter noise*)
-        Messages.report ((*(string_of_int !counter)^*)"CW: "^x)
+        GMessages.report ((*(string_of_int !counter)^*)"CW: "^x)
 
 
   let error x = 
     let loc = !Tracing.current_loc in
       if (not (loc.file ="LLVM INTERNAL") || not (loc.line=1))&& !Goblintutil.in_verifying_stage  then (*filter noise*)
-        Messages.report_error ("CW: "^x)
+        GMessages.report_error ("CW: "^x)
 				
   let taintedFunDec = (emptyFunction "@tainted_fields").svar               
     
@@ -844,13 +844,13 @@ struct
 					  if (not cft || it) && (is_ext (FieldVars.get_var x).vname) glob && not (is_safe_name (FieldVars.get_var x).vname)
 					  then 
 						begin	
-							(*Messages.report((string_of_int (!uid) )^":"^(sprint 160 (FieldVars.pretty () x))^" it "^string_of_bool it^" cft "^string_of_bool cft);*)
+							(*GMessages.report((string_of_int (!uid) )^":"^(sprint 160 (FieldVars.pretty () x))^" it "^string_of_bool it^" cft "^string_of_bool cft);*)
 							false
 						end 
 						else y) 
 					args true
 					in
-            (*Messages.report((string_of_int (!uid) )^":"^"danger.UPDATE_THIS_2 "^v.vname^" -> "^(sprint 160 (FieldVars.pretty () fv))^" = "^sprint 160 (ArgSet.pretty () args)^" rhs_ctf : "^string_of_bool rhs_cft);*)                  
+            (*GMessages.report((string_of_int (!uid) )^":"^"danger.UPDATE_THIS_2 "^v.vname^" -> "^(sprint 160 (FieldVars.pretty () fv))^" = "^sprint 160 (ArgSet.pretty () args)^" rhs_ctf : "^string_of_bool rhs_cft);*)                  
 						if not rhs_cft&& not (FieldVars.get_var fv).vglob then
 						begin
 							let flds = get_field_from_this (Lval (Var (FieldVars.get_var fv),NoOffset)) st in     
@@ -929,7 +929,7 @@ struct
 				let (fd,st,gd) =
 				if (*not must_assign && MUST PROPAGATE HERE!!!*)not (ArgSet.is_bot ds) then
 				begin
-          (*Messages.report((string_of_int (!uid) )^":"^"danger.prop_ds_1 "^v.vname^" -> "^sprint 160 (ArgSet.pretty () ds)^" = "^sprint 160 (ArgSet.pretty () args));*)
+          (*GMessages.report((string_of_int (!uid) )^":"^"danger.prop_ds_1 "^v.vname^" -> "^sprint 160 (ArgSet.pretty () ds)^" = "^sprint 160 (ArgSet.pretty () args));*)
 					ArgSet.fold (fun x y -> update_this x y args) ds (fd,st,gd) (*args???*) 
 				end
 				else	
@@ -1339,7 +1339,7 @@ struct
   let assign_argmap fs lval exp (fd, st, df) must_assign glob = (*keep track of used fun args*)
 			match used_args st exp with
           | s when ArgSet.is_top s ->
-              Messages.warn ("Expression "^(sprint 160 (d_exp () exp))^" too complicated.");
+              GMessages.warn ("Expression "^(sprint 160 (d_exp () exp))^" too complicated.");
               fd, st, df
           | s when ArgSet.is_bot s -> let vars= get_vars exp in 
               let s = List.fold_left (fun y x->if not (is_safe_name x.vname) then begin ArgSet.add (FieldVars.gen x) y end else y) (ArgSet.empty()) vars in
@@ -1403,7 +1403,7 @@ struct
 									  in 
 										begin 
                     (*muid := !muid +1;
-                    Messages.report ((string_of_int !muid)^":no_vtbl2t : "^(sprint 160 (d_lval () lval))^ " = "^sprint 160 (ArgSet.pretty () ns));*)
+                    GMessages.report ((string_of_int !muid)^":no_vtbl2t : "^(sprint 160 (d_lval () lval))^ " = "^sprint 160 (ArgSet.pretty () ns));*)
 										assign_to_lval fs lval (fd, st, df) ns must_assign glob "L1388:"                                                   
 		                end
 									end

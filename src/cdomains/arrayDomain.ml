@@ -1,5 +1,5 @@
 open Pretty
-open Messages
+open GMessages
 
 module A = Array
 module GU = Goblintutil

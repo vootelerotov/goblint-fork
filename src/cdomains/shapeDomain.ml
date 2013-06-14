@@ -5,7 +5,7 @@ module Bool  = IntDomain.Booleans
 module Offs  = Lval.Offset (IntDomain.Integers)
 module CLval = Lval.CilLval 
 
-open Cil
+open Gil
 
 module ListPtr = 
 struct
@@ -120,7 +120,7 @@ struct
       | `Right ((v,_),_) 
       | `Left v -> 
     upd v true;
-(*     Messages.waitWhat ("Improper use of "^v.vname^"."); *)
+(*     GMessages.waitWhat ("Improper use of "^v.vname^"."); *)
     remove lp sm
 
   let find' ask gl k m = 
@@ -150,7 +150,7 @@ end
 type listField = [`Prev | `Next | `NA]
 type lexp = ListPtr.t * listField
 
-open Cil
+open Gil
 
 let list_head_type : typ -> bool = function
   | TComp (ci,_) when ci.cname = "list_head" && ci.cstruct
@@ -195,7 +195,7 @@ let eval_lp ask (e:exp) : lexp option =
     | _ -> None 
 
 
-let warn_todo s = Messages.warn ("NotImplemented exception! "^s)
+let warn_todo s = GMessages.warn ("NotImplemented exception! "^s)
 
 let alias_top lp = SHMap.remove lp 
 
@@ -305,7 +305,7 @@ let proper_list_segment ask gl (lp1:ListPtr.t) (sm:SHMap.t) : bool =
     let app_edge' f s = function 
       | `Lifted1 s -> f s
       | `Lifted2 s -> f s
-      | `Bot ->  Messages.bailwith "not implemented1"
+      | `Bot ->  GMessages.bailwith "not implemented1"
       | `Top ->  s ()
     in
     let point_to_me lp = 
@@ -315,7 +315,7 @@ let proper_list_segment ask gl (lp1:ListPtr.t) (sm:SHMap.t) : bool =
     if Edges.is_top n 
     || app_edge' (fun x -> ListPtrSet.is_empty x) (fun () -> true) n 
     then None else 
-    let lp' = app_edge' ListPtrSet.choose (fun () -> Messages.bailwith "not implemented2") n in
+    let lp' = app_edge' ListPtrSet.choose (fun () -> GMessages.bailwith "not implemented2") n in
     if app_edge (ListPtrSet.for_all point_to_me) n 
     then Some lp' else None
   in
@@ -341,7 +341,7 @@ let proper_list_segment' ask gl (lp1:ListPtr.t) (lp2:ListPtr.t) (sm:SHMap.t) : b
     let app_edge' f s = function 
       | `Lifted1 s -> f s
       | `Lifted2 s -> f s
-      | `Bot ->  Messages.bailwith "not implemented1"
+      | `Bot ->  GMessages.bailwith "not implemented1"
       | `Top ->  s ()
     in
     let point_to_me lp = 
@@ -350,7 +350,7 @@ let proper_list_segment' ask gl (lp1:ListPtr.t) (lp2:ListPtr.t) (sm:SHMap.t) : b
     in
     app_edge' (fun x -> not (ListPtrSet.is_top x)) (fun () -> false) n &&
     app_edge' (fun x -> not (ListPtrSet.is_top x)) (fun () -> false) p &&
-    let lp' = app_edge' ListPtrSet.choose (fun () -> Messages.bailwith "not implemented2") n in
+    let lp' = app_edge' ListPtrSet.choose (fun () -> GMessages.bailwith "not implemented2") n in
     app_edge (ListPtrSet.for_all point_to_me) n &&
 (*     app_edge (ListPtrSet.mem lp1) p && *)
     if ListPtr.equal lp1 lp2 then true else
@@ -533,21 +533,21 @@ let sync_one ask gl upd (sm:SHMap.t) : SHMap.t * ((varinfo * bool) list) * ((var
       let alive = 
         match MyLiveness.getLiveSet !Cilfacade.currentStatement.sid with
           | Some x -> x
-          | _      -> Usedef.VS.empty
+          | _      -> GUsedef.VS.empty
       in
       let dead lp' = 
         let lpv' = ListPtr.get_var lp' in 
         lpv'.vid = lpv.vid || 
         (blab (not (lpv'.vglob)) (fun () -> Pretty.printf "global %s is never dead\n" lpv'.vname) && 
         let killer = ref dummyFunDec.svar in 
-        blab (if Usedef.VS.exists (fun x -> if lpv'.vid = x.vid then (killer := x; true) else false) alive
-        then ((*ignore (Messages.report ("List "^ListPtr.short 80 lp^" totally destroyed by "^(!killer).vname));*)false) 
+        blab (if GUsedef.VS.exists (fun x -> if lpv'.vid = x.vid then (killer := x; true) else false) alive
+        then ((*ignore (GMessages.report ("List "^ListPtr.short 80 lp^" totally destroyed by "^(!killer).vname));*)false) 
         else true) (fun () -> Pretty.printf "%s in alive list\n" lpv'.vname ))
       in
       blab (not (ListPtrSet.is_top pointedBy)) (fun () -> Pretty.printf "everything points at me\n") &&
       (ListPtrSet.for_all dead pointedBy)
-    with SetDomain.Unsupported _  -> ((*Messages.waitWhat "bla"; *)false)
-     | Not_found -> (*Messages.waitWhat "bla2"; *)false
+    with SetDomain.Unsupported _  -> ((*GMessages.waitWhat "bla"; *)false)
+     | Not_found -> (*GMessages.waitWhat "bla2"; *)false
   in
   let single_nonlist k = 
     (not (ListPtr.get_var k).vglob) &&
@@ -560,8 +560,8 @@ let sync_one ask gl upd (sm:SHMap.t) : SHMap.t * ((varinfo * bool) list) * ((var
     then (if single_nonlist k && noone_points_at_me k sm then (sm, ds, ([ListPtr.get_var k],[])::rms) else (sm, ds, rms)) 
     else 
       let isbroken = not (proper_list k) in
-     (*if isbroken then Messages.waitWhat (ListPtr.short 80 k) ;*)
-(*       Messages.report ("checking :"^ListPtr.short 80 k^" -- "^if isbroken then " broken " else "still a list"); *)
+     (*if isbroken then GMessages.waitWhat (ListPtr.short 80 k) ;*)
+(*       GMessages.report ("checking :"^ListPtr.short 80 k^" -- "^if isbroken then " broken " else "still a list"); *)
       (kill ask gl upd k sm, (ListPtr.get_var k, isbroken) :: ds, reg_for k :: rms)
   in
   SHMap.fold f sm (sm,[],[]) 

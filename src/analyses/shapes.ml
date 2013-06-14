@@ -1,6 +1,6 @@
 (** Shape analysis for cyclic doubly linked lists. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
@@ -92,7 +92,7 @@ struct
     LD.fold f st (LD.empty (), [], RegMap.bot (), RegPart.bot ())
 
   let reclaimLostRegions alive ctx (e,_) v =
-    if (not e.vglob) &&  (not (Usedef.VS.mem e alive)) then () else
+    if (not e.vglob) &&  (not (GUsedef.VS.mem e alive)) then () else
     let is_public = function
       | `Left (v,_) -> (not (is_private ctx.ask (`Left v)))  
       | `Right _    -> false
@@ -126,7 +126,7 @@ struct
           let alive =
             match MyLiveness.getLiveSet !Cilfacade.currentStatement.sid with
               | Some x -> x
-              | _      -> Usedef.VS.empty
+              | _      -> GUsedef.VS.empty
     	  in
           RegMap.iter (reclaimLostRegions alive ctx) m
         | x -> ()

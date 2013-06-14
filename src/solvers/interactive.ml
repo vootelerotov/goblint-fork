@@ -1,8 +1,8 @@
 open GobConfig
-open Messages
+open GMessages
 open Progress
 open Pretty
-open Cil
+open Gil
 
 let run = ref false
 let break = ref []

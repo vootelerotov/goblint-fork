@@ -3,7 +3,7 @@ open Pretty
 
 module GU = Goblintutil
 module JB = Json
-module M = Messages
+module M = GMessages
 
 module type S =
 sig
@@ -1461,7 +1461,7 @@ struct
       | Some x2 when Int64.compare x1 x2 == 0 -> Some x1
       | Some x2 -> 
         let msg = "Inconsistent state! "^(Int64.to_string x1)^" != "^(Int64.to_string x2) in
-        Messages.warn_all msg; None
+        M.warn_all msg; None
 
   let to_bool (x1, x2) = 
     match I1.to_bool x1 with
@@ -1472,7 +1472,7 @@ struct
       | Some x2 when x1 == x2 -> Some x1
       | Some x2 -> 
         let msg = "Inconsistent state! "^(string_of_bool x1)^" != "^(string_of_bool x2) in
-        Messages.warn_all msg; None
+        M.warn_all msg; None
 
   let to_excl_list (x1, x2) = 
     match I1.to_excl_list x1 with
@@ -1918,7 +1918,7 @@ struct
         | Some y when x == y -> Some x
         | Some y ->
           let msg = "Inconsistent state! "^(string_of_bool x)^" != "^(string_of_bool y) in
-          Messages.warn_all msg; 
+          M.warn_all msg; 
           raise Inconsistent
     in
     try List.fold_left f None x
@@ -1934,7 +1934,7 @@ struct
         | Some y when Int64.compare x y == 0 -> Some x
         | Some y ->
           let msg = "Inconsistent state! "^(Int64.to_string x)^" != "^(Int64.to_string y) in
-          Messages.warn_all msg; 
+          M.warn_all msg; 
           raise Inconsistent
     in
     try List.fold_left f None x

@@ -7,11 +7,11 @@
  *
  *)
 
-open Cil
+open Gil
 open Pretty
 
-module DF = Dataflow
-module UD = Usedef
+module DF = GDataflow
+module UD = GUsedef
 module IH = Inthash
 module E = Errormsg
 
@@ -200,8 +200,8 @@ class doFeatureClass = object(self)
 
   method vfunc fd =
     if String.compare fd.svar.vname (!live_func) = 0 then
-      (Cfg.clearCFGinfo fd;
-       ignore(Cfg.cfgFun fd);
+      (GCfg.clearCFGinfo fd;
+       ignore(GCfg.cfgFun fd);
        computeLiveness fd;
        if String.compare (!live_label) "" = 0 then
          (printer := min_print;

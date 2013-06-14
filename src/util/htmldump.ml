@@ -1,7 +1,7 @@
 open Pretty
 open Printf;;
 open Xml;;
-open Cil;;
+open Gil;;
 open Unix;;
 open Lazy;;
 open Html_template;;

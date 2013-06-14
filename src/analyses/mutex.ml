@@ -1,6 +1,6 @@
 (** Data race analysis. *)
 
-module M = Messages
+module M = GMessages
 module GU = Goblintutil
 module Addr = ValueDomain.Addr
 module Offs = ValueDomain.Offs
@@ -11,10 +11,10 @@ module ID = ValueDomain.ID
 module IdxDom = ValueDomain.IndexDomain
 module LockingPattern = Exp.LockingPattern
 module Exp = Exp.Exp
-(*module BS = Base.Spec*)
-module BS = Base.Main
+(*module BS = GBase.Spec*)
+module BS = GBase.Main
 module LF = LibraryFunctions
-open Cil
+open Gil
 open Pretty
 open Analyses
 open GobConfig
@@ -45,7 +45,7 @@ let is_atomic lval =
 
 let is_ignorable lval = 
 (*  ignore (printf "Var %a\n" d_lval lval);*)
-  try Base.is_immediate_type (Cilfacade.typeOfLval lval) || is_atomic lval
+  try GBase.is_immediate_type (Cilfacade.typeOfLval lval) || is_atomic lval
   with Not_found -> false
 
 let rec get_flag (state :local_state list) : BS.Flag.t =
@@ -169,7 +169,7 @@ struct
   let access_address ask regs write lv : accesses =
     if is_ignorable lv then [] else
     let add_reg (v,o) = 
-(*       Messages.report ("Region: "^(sprint 80 (d_lval () lv))^" = "^v.vname^(Offs.short 80 (Offs.from_offset (conv_offset o)))); *)
+(*       M.report ("Region: "^(sprint 80 (d_lval () lv))^" = "^v.vname^(Offs.short 80 (Offs.from_offset (conv_offset o)))); *)
       Region (Some (Lval lv), v, Offs.from_offset (conv_offset o), write)
     in 
     match ask (Queries.MayPointTo (mkAddrOf lv)) with
@@ -215,10 +215,10 @@ struct
 (*    let is_unknown x = match x with Unknown _ -> true | _ -> false in*)
     match a (Queries.Regions exp) with
       | `Bot -> 
-(*          Messages.report ((sprint 80 (d_exp () exp))^" is thread local"); *)
+(*          M.report ((sprint 80 (d_exp () exp))^" is thread local"); *)
           [] (*List.filter is_unknown (accs [])*)
       | `LvalSet regs -> 
-(*           Messages.report ((sprint 80 (d_exp () exp))^" is in regions "^Queries.LS.short 800 regs); *)
+(*           M.report ((sprint 80 (d_exp () exp))^" is in regions "^Queries.LS.short 800 regs); *)
           accs (Queries.LS.elements regs)
       | _ -> accs []
   (* Accesses during the evaluation of an lval, not the lval itself! *)
@@ -253,7 +253,7 @@ struct
                         && not (Queries.LS.mem (dummyFunDec.svar,`NoOffset) a) ->  
             let to_extra (v,o) xs = 
               if is_ignorable (Var v, Lval.CilLval.to_ciloffs o) then xs else
-                Concrete (None, v, Base.Offs.from_offset (conv_offset o), true) :: xs  in
+                Concrete (None, v, GBase.Offs.from_offset (conv_offset o), true) :: xs  in
             Queries.LS.fold to_extra a [] 
          | `Bot -> []
          (* Ignore soundness warnings, as invalidation proper will raise them. *)
@@ -394,7 +394,7 @@ struct
       Acc2.replace acc2 v neww;
       accKeys2 := AccKeySet2.add v !accKeys2
     in
-(*     Messages.report (Printf.sprintf "%d + %d" (List.length accs_write) (List.length accs_read));   *)
+(*     M.report (Printf.sprintf "%d + %d" (List.length accs_write) (List.length accs_read));   *)
     List.iter (add_one true ) accs_write ;
     List.iter (add_one false) accs_read ;
     ()
@@ -417,7 +417,7 @@ struct
   (* Just adds accesses. It says concrete, but we use it to add verified 
      non-concrete accesses too.*)
   let add_concrete_access ctx fl loc ust (v, o, rv: varinfo * Offs.t * bool) =
-    if (Base.is_global ctx.ask v) then
+    if (GBase.is_global ctx.ask v) then
       if not !GU.may_narrow then begin 
         let curr : AccValSet.t = try Acc.find acc v with _ -> AccValSet.empty in
         let neww : AccValSet.t = AccValSet.add ((loc,fl,rv),ust,o) curr in
@@ -427,7 +427,7 @@ struct
     if not (Lockset.is_bot ust) then
       let ls = if rv then Lockset.filter snd ust else ust in
       let el = P.effect_fun ls in
-(*       (if LockDomain.Mutexes.is_empty el then Messages.waitWhat ("Race on "^v.vname)); *)
+(*       (if LockDomain.Mutexes.is_empty el then M.waitWhat ("Race on "^v.vname)); *)
 (*      let _ = printf "Access to %s with offense priority %a\n" v.vname P.Glob.Val.pretty el in*)
       ctx.geffect v el
       
@@ -512,7 +512,7 @@ struct
             let lock = Dom.add (ValueDomain.Addr.from_var_offset (v, conv_const_offset o),true) ust in
             add_accesses ctx accs lock
         | _ ->  
-            Messages.warn "Internal error: found a strange lockstep pattern.";            
+            M.warn "Internal error: found a strange lockstep pattern.";            
             add_accesses ctx accs ust
     in
     let do_perel e = 
@@ -520,7 +520,7 @@ struct
       | `ExpTriples a 
           when not (Queries.PS.is_top a || Queries.PS.is_empty a) 
           -> Queries.PS.iter one_perelem a;
-             Messages.debug ("Found per-element pattern: " ^ Queries.PS.short 800 a);
+             M.debug ("Found per-element pattern: " ^ Queries.PS.short 800 a);
              true
       | _ -> false
     in
@@ -529,7 +529,7 @@ struct
       | `ExpTriples a
           when not (Queries.PS.is_top a || Queries.PS.is_empty a)
           -> Queries.PS.iter one_lockstep a;
-             Messages.debug ("Found lockstep pattern: " ^ Queries.PS.short 800 a);
+             M.debug ("Found lockstep pattern: " ^ Queries.PS.short 800 a);
              true
       | _ -> false 
     in 

@@ -1,6 +1,6 @@
 (** domain of the base analysis *)
 
-open Cil
+open Gil
 module VD     = ValueDomain.Compound
 module CPA    = MapDomain.MapBot_LiftTop (Basetype.Variables) (VD)
 module Flag   = ConcDomain.SimpleThreadDomain

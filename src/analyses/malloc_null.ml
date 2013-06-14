@@ -1,12 +1,12 @@
 (** Path-sensitive analysis that verifies checking the result of the malloc function. *)
 
-module M = Messages
-module BS = Base.Main
+module M = GMessages
+module BS = GBase.Main
 module AD = ValueDomain.AD
 module IdxDom = ValueDomain.IndexDomain
 module Offs = ValueDomain.Offs
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 open GobConfig
@@ -49,7 +49,7 @@ struct
       if Dom.exists (fun x -> List.exists (fun x -> is_prefix_of x v) (Addr.to_var_offset x)) st
       then 
         let var = Addr.from_var_offset v in
-        Messages.report ("Possible dereferencing of null on variable '" ^ (Addr.short 80 var) ^ "'.")
+        GMessages.report ("Possible dereferencing of null on variable '" ^ (Addr.short 80 var) ^ "'.")
     with SetDomain.Unsupported _ -> ()
   
   (* Warn null-lval dereferences, but not normal (null-) lvals*)

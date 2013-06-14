@@ -1,10 +1,10 @@
 (** Variables that escape threads using the last argument from pthread_create. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
-module M = Messages
+module M = GMessages
 
 module Spec =
 struct
@@ -74,7 +74,7 @@ struct
             | [_; _; start; ptc_arg] ->
 				let r = reachable ctx.ask ptc_arg in
 				  List.map (fun (v,_) -> (v,r)) (query_lv ctx.ask start)
-            | _ -> Messages.bailwith "pthread_create arguments are strange!"
+            | _ -> GMessages.bailwith "pthread_create arguments are strange!"
         end
       | _ -> [] 
 

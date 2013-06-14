@@ -1,4 +1,4 @@
-open Cil
+open Gil
 open Pretty
 (*module ID: IntDomain.ExclList = IntDomain.None*)
 (* module ID: IntDomain.S = IntDomain.Trier   *)
@@ -8,7 +8,7 @@ module IndexDomain: IntDomain.S = ID
 module AD = AddressDomain.AddressSet (IndexDomain)
 module Addr = Lval.NormalLat (IndexDomain)
 module Offs = Lval.Offset (IndexDomain)
-module M = Messages
+module M = GMessages
 module GU = Goblintutil
 
 module AddrSetDomain = SetDomain.ToppedSet(Addr)(struct let topname = "All" end)

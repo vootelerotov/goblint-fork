@@ -1,10 +1,10 @@
 (** Tools for dealing with library functions. *)
 
-open Cil
+open Gil
 open GobConfig
 open Goblintutil
 
-module M = Messages
+module M = GMessages
 
 type categories = [
   | `Malloc       

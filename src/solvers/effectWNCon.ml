@@ -1,6 +1,6 @@
 (** Dont use this! *)
 open GobConfig
-open Messages
+open GMessages
 open Progress
 open Pretty
 

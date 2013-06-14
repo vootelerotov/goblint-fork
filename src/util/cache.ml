@@ -1,6 +1,6 @@
 (** Simple cache, used in solvers. *)
 
-open Cil
+open Gil
 
 module OneVar (V : Hashtbl.HashedType) =
 struct

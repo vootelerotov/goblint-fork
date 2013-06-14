@@ -99,7 +99,7 @@ end
 
 (* SharirPnueli algo *)
 
-type proc = Cil.varinfo (* CIL.something *)
+type proc = Gil.varinfo (* CIL.something *)
 
 type nodeKind = 
   [ `ProcCall  

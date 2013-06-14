@@ -1,5 +1,5 @@
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 open DeadlockDomain
@@ -20,7 +20,7 @@ let addLockingInfo newLock lockList =
   List.iter (fun e -> List.iter (fun (a,b) -> 
       if ((equalLock a e) && (equalLock b newLock)) then (
         let msg = (sprintf "Deadlock warning: Locking order %s, %s in line %i, %i (after %i, %i)\n" (ValueDomain.Addr.short () e.addr) (ValueDomain.Addr.short () newLock.addr) e.loc.line newLock.loc.line b.loc.line a.loc.line) in
-        Messages.report msg;
+        GMessages.report msg;
       )
       else () ) !forbiddenList ) lockList;
 
@@ -95,7 +95,7 @@ struct
       | `LvalSet a when not (Queries.LS.is_top a) -> 
           Queries.LS.fold gather_addr (Queries.LS.remove (dummyFunDec.svar, `NoOffset) a) []    
       | `Bot -> []
-      | b -> Messages.warn ("Could not evaluate '"^sprint 30 (d_exp () exp)^"' to an points-to set, instead got '"^Queries.Result.short 60 b^"'."); []
+      | b -> GMessages.warn ("Could not evaluate '"^sprint 30 (d_exp () exp)^"' to an points-to set, instead got '"^Queries.Result.short 60 b^"'."); []
     
   (* Called when calling a special/unknown function *)
   let special_fn ctx (lval: lval option) (f:varinfo) (arglist:exp list) : (Dom.t * exp * bool) list =

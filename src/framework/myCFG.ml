@@ -2,7 +2,8 @@
 
 module GU = Goblintutil
 module CF = Cilfacade
-open Cil
+module GM  = GMessages
+open Gil
 open Pretty
 open GobConfig
 
@@ -147,18 +148,18 @@ let dummy_func = emptyFunction "__goblint_dummy_init"
 let createCFG (file: file) =
   let cfgF = H.create 113 in
   let cfgB = H.create 113 in
-  if Messages.tracing then Messages.trace "cfg" "Starting to build the cfg.\n\n";
+  if GM.tracing then GM.trace "cfg" "Starting to build the cfg.\n\n";
   
   (* Utility function to add stmt edges to the cfg *)
   let addCfg t (e,f) = 
-    if Messages.tracing then 
-      Messages.trace "cfg" "Adding edge (%a) from\n\t%a\nto\n\t%a ... " 
+    if GM.tracing then 
+      GM.trace "cfg" "Adding edge (%a) from\n\t%a\nto\n\t%a ... " 
           pretty_edge_kind e 
           pretty_short_node f 
           pretty_short_node t;
     H.add cfgB t (e,f);
     H.add cfgF f (e,t);
-    Messages.trace "cfg" "done\n\n" 
+    GM.trace "cfg" "done\n\n" 
   in
   let mkEdge fromNode edge toNode = addCfg (Statement toNode) (edge, Statement fromNode) in
   (* Function for finding the next real successor of a statement. CIL tends to
@@ -189,7 +190,7 @@ let createCFG (file: file) =
   iterGlobals file (fun glob -> 
     match glob with
       | GFun (fd,loc) ->
-        if Messages.tracing then Messages.trace "cfg" "Looking at the function %s.\n" fd.svar.vname;    
+        if GM.tracing then GM.trace "cfg" "Looking at the function %s.\n" fd.svar.vname;    
           (* Walk through the parameters and pre-process them a bit... *)
           do_the_params fd;
           (* Find the first statement in the function *)
@@ -202,7 +203,7 @@ let createCFG (file: file) =
              * so the Eclipse plug-in can know what function a given result
              * belongs to. *)
             Hashtbl.add stmt_index_hack stmt.sid fd;
-            if Messages.tracing then Messages.trace "cfg" "Statement at %a.\n" d_loc (get_stmtLoc stmt.skind);
+            if GM.tracing then GM.trace "cfg" "Statement at %a.\n" d_loc (get_stmtLoc stmt.skind);
             match stmt.skind with 
               (* Normal instructions are easy. They should be a list of a single
                * instruction, either Set, Call or ASM: *)
@@ -262,7 +263,7 @@ let createCFG (file: file) =
             List.iter handle fd.sallstmts
       | _ -> ()
   );
-  if Messages.tracing then Messages.trace "cfg" "CFG building finished.\n\n";
+  if GM.tracing then GM.trace "cfg" "CFG building finished.\n\n";
   cfgF, cfgB
 
 let hasBackEdges = ref BISet.empty 

@@ -3,7 +3,7 @@
  * even when the subsystem is not activated. *)
 
 open Pretty
-open Cil
+open Gil
 
 module Strs = Set.Make (String)
 

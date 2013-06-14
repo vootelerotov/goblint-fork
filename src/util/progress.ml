@@ -1,12 +1,12 @@
-open Cil
+open Gil
 open Pretty
 
-module M = Messages
+module M = GMessages
 module GU = Goblintutil
 
 (* Compile time constants: *)
-let tracking = Config.tracking
-let n =        Config.track_n
+let tracking = GConfig.tracking
+let n =        GConfig.track_n
 
 
 let call_hashtbl = Hashtbl.create 101
@@ -36,7 +36,7 @@ let track_with_profile () =
   in
   let r = Hashtbl.fold (fun k v x -> insert 11 (!v,k) x false) reached_loc_hashtbl [] in
   let print_node (n,l) =
-    Messages.print_msg ("Hotspot: visited " ^ string_of_int n ^ " times") l
+    M.print_msg ("Hotspot: visited " ^ string_of_int n ^ " times") l
   in
   List.iter print_node r
 

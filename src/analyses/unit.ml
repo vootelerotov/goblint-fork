@@ -1,6 +1,6 @@
 (** An analysis specification for didactic purposes. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 

@@ -1,5 +1,5 @@
 module GU = Goblintutil
-module M = Messages
+module M = GMessages
 
 open Batteries
 open GobConfig
@@ -136,9 +136,9 @@ let do_stats fileNames =
                       ]<:>
                       table 
                       [[str "Goblint Build Option"; str "Status"]
-                      ;[str "Tracing"     ; str (f Config.tracing)]
-                      ;[str "Tracking"    ; (fun c -> Legacy.Printf.fprintf c "%s (n=%d)" (f Config.tracking) Config.track_n)]
-                      (*;[str "Experimental"; str (f Config.experimental)]*)
+                      ;[str "Tracing"     ; str (f GConfig.tracing)]
+                      ;[str "Tracking"    ; (fun c -> Legacy.Printf.fprintf c "%s (n=%d)" (f GConfig.tracking) GConfig.track_n)]
+                      (*;[str "Experimental"; str (f GConfig.experimental)]*)
                       ]
                     end] 
                 ]

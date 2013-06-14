@@ -1,5 +1,5 @@
 open Solver
-open Cil
+open Gil
 module GU = Goblintutil
 
 module Algorithm

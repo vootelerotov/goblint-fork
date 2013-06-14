@@ -3,7 +3,7 @@ module Equ = MusteqDomain.Equ
 module Exp = Exp.Exp
 module IdxDom = ValueDomain.IndexDomain
 
-open Cil
+open Gil
 open Pretty
 
 module Mutexes = SetDomain.ToppedSet (Addr) (struct let topname = "All mutexes" end)
@@ -171,7 +171,7 @@ struct
 	| _ -> failwith "Unmatched pattern.")
   
   let add ask e st = 
-    let no_casts = S.map Expcompare.stripCastsDeepForPtrArith (eq_set ask e) in
+    let no_casts = S.map GExpcompare.stripCastsDeepForPtrArith (eq_set ask e) in
     let addrs = S.filter (function AddrOf _ -> true | _ -> false) no_casts in
     S.union addrs st
   let remove ask e st = S.diff st (eq_set ask e)

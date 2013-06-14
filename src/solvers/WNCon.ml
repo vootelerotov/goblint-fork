@@ -33,7 +33,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *)
 
-open Messages (* The tracing functions are imported *)
+open GMessages (* The tracing functions are imported *)
 open Pretty (* All printf style functions *)
    
 module Make (Var: Analyses.VarType) (Dom: Lattice.S) = 

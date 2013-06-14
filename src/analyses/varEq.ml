@@ -1,6 +1,6 @@
 (** Variable equalities neccessary for per-element patterns. *)
 
-module M = Messages
+module M = GMessages
 module GU = Goblintutil
 module Addr = ValueDomain.Addr
 module Offs = ValueDomain.Offs
@@ -8,7 +8,7 @@ module AD = ValueDomain.AD
 module Exp = Exp.Exp
 (*module BS = Base.Spec*)
 module LF = LibraryFunctions
-open Cil
+open Gil
 open Pretty
 open Analyses
 

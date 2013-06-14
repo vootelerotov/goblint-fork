@@ -1,11 +1,11 @@
 (** Signatures for aanlyzers, analysis specifications, and result output.  *)
 
-open Cil
+open Gil
 open Pretty
 open GobConfig
 
 module GU = Goblintutil
-module M  = Messages
+module M  = GMessages
 
 (** Analysis starts from lists of functions: start functions, exit functions, and
   * other functions. *)
@@ -609,7 +609,7 @@ struct
   let output table gtable (file: file) =
     if (get_bool "dbg.verbose") then print_endline ("Filtering output for files that match : '"^ (!GU.result_filter)^"'");
     GU.result_regexp := (Str.regexp (!GU.result_filter));
-    let out = Messages.get_out result_name !GU.out in
+    let out = GMessages.get_out result_name !GU.out in
     match get_string "result" with
       | "pretty" -> ignore (fprintf out "%a\n" pretty (Lazy.force table))
       | "indented" -> begin

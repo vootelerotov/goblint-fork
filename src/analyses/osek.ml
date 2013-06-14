@@ -1,10 +1,10 @@
 (** Data race analysis for OSEK programs. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 open GobConfig
-open Messages
+open GMessages
 
 open OilParser
 open OilLexer
@@ -147,7 +147,7 @@ struct
   module Lockset = LockDomain.Lockset
   
   module Flags = FlagModeDomain.Dom
-  module AccValSet = Set.Make (Printable.Prod (Printable.Prod3 (Printable.Prod3 (Basetype.ProgLines) (Base.Main.Flag) (IntDomain.Booleans)) (Lockset) (Offs)) (Flags))
+  module AccValSet = Set.Make (Printable.Prod (Printable.Prod3 (Printable.Prod3 (Basetype.ProgLines) (GBase.Main.Flag) (IntDomain.Booleans)) (Lockset) (Offs)) (Flags))
   let acc     : AccValSet.t M.Acc.t = M.Acc.create 100
   let accKeys : M.AccKeySet.t ref   = ref M.AccKeySet.empty
 
@@ -304,8 +304,8 @@ let _ = print_endline (string_of_bool res) in res*)
 
   (* Just adds accesses. It says concrete, but we use it to add verified 
      non-concrete accesses too.*)
-  let add_concrete_access ctx fl loc ust (flagstate : Flags.t) (v, o, rv: Cil.varinfo * Offs.t * bool) =
-    if (Base.is_global ctx.ask v) then begin
+  let add_concrete_access ctx fl loc ust (flagstate : Flags.t) (v, o, rv: varinfo * Offs.t * bool) =
+    if (GBase.is_global ctx.ask v) then begin
       if not (is_task v.vname) then begin
         if not !GU.may_narrow then begin
           let new_acc = ((loc,fl,rv),ust,o) in
@@ -347,7 +347,7 @@ let _ = print_endline (string_of_bool res) in res*)
 
   let add_accesses ctx (accessed: M.accesses) (flagstate: Flags.t) (ust:Dom.t) = 
       let fl = Mutex.get_flag ctx.presub in
-      if Base.Main.Flag.is_multi fl then
+      if GBase.Main.Flag.is_multi fl then
         let loc = !Tracing.current_loc in
         let dispatch ax =
           match ax with
@@ -469,7 +469,7 @@ let _ = print_endline (string_of_bool res) in res*)
   let leave_func ctx (lval:lval option) fexp (f:varinfo) (args:exp list) (au:Dom.t) : Dom.t =
    M.leave_func ctx (lval:lval option) fexp (f:varinfo) (args:exp list) au
 
-  let special_fn ctx (lval: lval option) (f:varinfo) (arglist:exp list) : (Dom.t * Cil.exp * bool) list =
+  let special_fn ctx (lval: lval option) (f:varinfo) (arglist:exp list) : (Dom.t * exp * bool) list =
     let fvname = get_api_names f.vname in
     if tracing then trace "osek" "SPECIAL_FN '%s'\n" fvname;
     match fvname with
@@ -620,7 +620,7 @@ let _ = print_endline (string_of_bool res) in res*)
 	List.fold_left f (Lockset.bot ()) acc_list
     in
     let rw ((_,_,x),_,_) = x in
-    let non_main ((_,x,_),_,_) = Base.Main.Flag.is_bad x in
+    let non_main ((_,x,_),_,_) = GBase.Main.Flag.is_bad x in
     let is_race_no_flags acc_list =
       let offpry = offpry acc_list in
       let minpry = minpry acc_list in
@@ -756,7 +756,7 @@ let _ = print_endline (string_of_bool res) in res*)
 	  let pry = List.fold_left (fun y x -> if pry x > y then pry x else y) (min_int) my_locks in  
 	  let flag_str = if !Errormsg.verboseFlag then Pretty.sprint 80 (Flags.pretty () flagstate) else Flags.short 80 flagstate in
           let action = if write then "write" else "read" in
-          let thread = "\"" ^ Base.Main.Flag.short 80 fl ^ "\"" in
+          let thread = "\"" ^ GBase.Main.Flag.short 80 fl ^ "\"" in
           let warn = action ^ " in " ^ thread ^ " with priority: " ^ (string_of_int pry) ^ ", lockset: " ^ lock_str ^ " and flag state: " ^flag_str in
             (warn,loc) 
         in (*/f*)       
@@ -823,7 +823,7 @@ let _ = print_endline (string_of_bool res) in res*)
       print_endline "NB! That didn't seem like a multithreaded program.";
       print_endline "Try `goblint --help' to do something other than Data Race Analysis."
     end;
-    Base.Main.finalize ()
+    GBase.Main.finalize ()
 
   let init () = (*
     let tramp = get_string "ana.osek.tramp" in

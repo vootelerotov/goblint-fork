@@ -1,6 +1,6 @@
 (** Structures for the querying subsystem. *)
 
-include Cil
+include Gil
 include Pretty 
 
 module GU = Goblintutil

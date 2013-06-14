@@ -1,6 +1,6 @@
 (** Deadlock analysis using data race detection. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 

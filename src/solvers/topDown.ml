@@ -1,7 +1,7 @@
 (** A top down solver with no-global variables nor side-effecting. *)
 (* Use [--full-context --no mutex] on single threaded programs.  *)
 
-open Messages
+open GMessages
 open Progress
 open Pretty
 

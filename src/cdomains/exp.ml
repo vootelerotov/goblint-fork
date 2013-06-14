@@ -1,12 +1,12 @@
 open Pretty
-open Cil
+open Gil
 
 module Exp =
 struct
   type t = exp
   include Printable.Std
 
-  let equal = Expcompare.compareExp
+  let equal = GExpcompare.compareExp
   let hash = Hashtbl.hash
   let compare = Pervasives.compare
   let classify _ = 0

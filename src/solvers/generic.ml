@@ -91,7 +91,7 @@ end
 module SolverStats (S:EqConstrSys) =
 struct
   open S
-  open Messages
+  open GMessages
   
   module GU = Goblintutil
 
@@ -305,7 +305,7 @@ struct
         H.remove infl x;
         H.replace infl x [x];
         if full_trace
-        then Messages.trace "sol" "Need to review %d deps.\n" (List.length deps);
+        then GMessages.trace "sol" "Need to review %d deps.\n" (List.length deps);
         (* solve all dependencies *)
         solve_all deps        
       end

@@ -1,6 +1,6 @@
 (** Abstract domains representing structs. *)
 
-open Cil
+open Gil
 
 module type S =
 sig

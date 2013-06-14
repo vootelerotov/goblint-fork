@@ -1,7 +1,7 @@
 (** Flag state values. *)
 
 open Batteries
-open Cil
+open Gil
 open Pretty
 open Analyses
 open GobConfig

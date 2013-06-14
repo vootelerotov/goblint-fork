@@ -1,6 +1,6 @@
 (** Thread-id analyses. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
@@ -47,19 +47,19 @@ struct
     au
     
   let call_unusable (fname:string) =
-    Messages.bailwith (Printf.sprintf "%s has unusable arguments!" fname)
+    GMessages.bailwith (Printf.sprintf "%s has unusable arguments!" fname)
     
   let eval_arg ctx (arg:exp) =
     match eval_fv ctx.ask arg with
       | Some v -> v
-      | None   -> Messages.bailwith "cannot extract arg"
+      | None   -> GMessages.bailwith "cannot extract arg"
 
   (** Retrieves the current thread id from the domain value. *)
   let current_thread (state : Dom.t) : Basetype.Variables.t =
     let thread_id_set = ConcDomain.ThreadIdSet.elements (Dom.current_thread state) in
     match thread_id_set with
       | [thread_id] -> thread_id
-      | _           -> Messages.bailwith "Current thread id is unusable"
+      | _           -> GMessages.bailwith "Current thread id is unusable"
 
   (** Handles creation of the new thread. thread_id has been already resolved. *)
   let pthread_create_id ctx start_routine (thread_id : Basetype.Variables.t) =

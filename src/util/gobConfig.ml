@@ -19,7 +19,7 @@
 
 open Batteries
 open Tracing
-open Config
+open GConfig
 open Printf
 open JsonSchema
 open Json

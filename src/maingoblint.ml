@@ -6,10 +6,12 @@ open Defaults
 open Printf
 open Json
 open Goblintutil
+open Cil
+module E = Errormsg
 
 (** Print version and bail. *)
 let print_version ch = 
-  let open Version in let open Config in
+  let open Version in let open GConfig in
   let f ch b = if b then fprintf ch "enabled" else fprintf ch "disabled" in
   printf "Goblint version: %s\n" goblint;
   printf "Cil version:     %s (%s)\n" Cil.cilVersion cil;
@@ -43,7 +45,7 @@ let print_help ch =
 let option_spec_list = 
   let set_trace sys = 
     let msg = "Goblin has been compiled without tracing, run ./scripts/trace_on.sh to recompile." in
-    if Config.tracing then Tracing.addsystem sys
+    if GConfig.tracing then Tracing.addsystem sys
     else (prerr_endline msg; raise BailFromMain)
   in
   let oil file =
@@ -101,7 +103,7 @@ let handle_flags () =
   if get_bool "allfuns" || get_bool "nonstatic" || has_oil then 
     Goblintutil.multi_threaded := true;
   
-  if get_bool "dbg.debug" then Messages.warnings := true;
+  if get_bool "dbg.debug" then GMessages.warnings := true;
 
   if get_bool "dbg.verbose" then begin
     Printexc.record_backtrace true;
@@ -112,7 +114,7 @@ let handle_flags () =
   match get_string "dbg.dump" with
     | "" -> ()
     | path -> begin
-        Messages.warn_out := Legacy.open_out (Legacy.Filename.concat path "warnings.out");
+        GMessages.warn_out := Legacy.open_out (Legacy.Filename.concat path "warnings.out");
         set_string "outfile" ""
       end
   
@@ -192,12 +194,86 @@ let preprocess_files () =
   if get_bool "dbg.verbose" then print_endline "Preprocessing files.";
     List.rev_map (preprocess_one_file !cppflags !includes dirName) !cFileNames, dirName 
 
+let translate ast = Gil.dummyFile
 
+class allBBVisitor = object
+  inherit nopCilVisitor 
+  method vstmt s =
+    match s.skind with
+      | Instr(il) ->
+          let list_of_stmts = 
+            List.map (fun one_inst -> mkStmtOneInstr one_inst) il in
+          let block = mkBlock list_of_stmts in
+            ChangeDoChildrenPost(s, (fun _ -> s.skind <- Block(block); s))
+      | _ -> DoChildren
+
+  method vvdec _ = SkipChildren
+  method vexpr _ = SkipChildren
+  method vlval _ = SkipChildren
+  method vtype _ = SkipChildren
+end 
+
+let end_basic_blocks f =
+  let thisVisitor = new allBBVisitor in
+  visitCilFileSameGlobals thisVisitor f  
+
+let createCFG (fileAST: file) =
+  end_basic_blocks fileAST; 
+  (* Partial.calls_end_basic_blocks fileAST; *)
+  Partial.globally_unique_vids fileAST; 
+  iterGlobals fileAST (fun glob -> 
+    match glob with
+      | GFun(fd,_) -> 
+          prepareCFG fd; 
+          computeCFGInfo fd true
+      | _ -> ()
+  )
+
+(* a visitor that puts calls to constructors at the starting points to main *)
+class addConstructors cons = object
+  inherit nopCilVisitor 
+  val mutable cons1 = cons
+  method vfunc fd =
+    if List.mem fd.svar.vname (List.map string (get_list "mainfun")) then begin
+      let loc = try get_stmtLoc (List.hd fd.sbody.bstmts).skind with Failure _ -> locUnknown in
+      let f fd = mkStmt (Instr [Call (None,Lval (Var fd.svar, NoOffset),[],loc)]) in
+      let call_cons = List.map f cons1 in
+      let body = mkBlock (call_cons @ fd.sbody.bstmts) in
+      fd.sbody <- body;
+      ChangeTo fd
+    end else SkipChildren
+      
+  method vstmt _ = SkipChildren
+  method vvdec _ = SkipChildren
+  method vexpr _ = SkipChildren
+  method vlval _ = SkipChildren
+  method vtype _ = SkipChildren
+end 
+
+(* call constructors at start of main functions *)
+let callConstructors ast =
+  let constructors =
+    let cons = ref [] in
+    iterGlobals ast (fun glob ->
+      match glob with 
+        | GFun({svar={vattr=attr}} as def, _) when hasAttribute "constructor" attr -> 
+            cons := def::!cons
+        | _ -> ()
+      );
+      !cons
+  in
+    visitCilFileSameGlobals (new addConstructors constructors) ast;
+    ast
+
+let partial fileAST = Partial.partial fileAST "main" []
+let simplify fileAST = iterGlobals fileAST Simplify.doGlobal
 (** Possibly merge all postprocessed files *)
 let merge_preprocessed (cpp_file_names, dirName) =
   (* get the AST *)
+  let parse fileName = Frontc.parse fileName () in
+
   if get_bool "dbg.verbose" then print_endline "Parsing files.";
-  let files_AST = List.rev_map Cilfacade.getAST cpp_file_names in
+  let files_AST = List.rev_map parse cpp_file_names in
 
   (* remove the files *)
   if not (get_bool "keepcpp") then ignore (Goblintutil.rm_rf dirName);
@@ -208,26 +284,33 @@ let merge_preprocessed (cpp_file_names, dirName) =
   
   (* direct the output to file if requested  *)
   if not (get_string "outfile" = "") then Goblintutil.out := Legacy.open_out (get_string "outfile");
-  Errormsg.logChannel := Messages.get_out "cil" cilout;
+  Errormsg.logChannel := GMessages.get_out "cil" cilout;
   
+  let getMergedAST fileASTs = 
+    let merged = Mergecil.merge fileASTs "stdout" in
+    if !E.hadErrors then E.s (E.error "There were errors during merging\n");
+    merged
+  in
+
   (* we use CIL to merge all inputs to ONE file *)
   let merged_AST = 
     match files_AST with
-      | [one] -> Cilfacade.callConstructors one
+      | [one] -> callConstructors one
       | [] -> prerr_endline "No arguments for Goblint?"; 
               prerr_endline "Try `goblint --help' for more information."; 
               raise BailFromMain
-      | xs -> Cilfacade.getMergedAST xs |> Cilfacade.callConstructors  
+      | xs -> getMergedAST xs |> callConstructors  
   in
   
   (* using CIL's partial evaluation and constant folding! *)
-  if get_bool "dopartial" then Cilfacade.partial merged_AST;
-  Cilfacade.rmTemps merged_AST;
+  if get_bool "dopartial" then partial merged_AST;
+  Rmtmps.removeUnusedTemps merged_AST;
   
   (* creat the Control Flow Graph from CIL's AST *)
-  Cilfacade.createCFG merged_AST;
-  Cilfacade.ugglyImperativeHack := merged_AST;
-  merged_AST
+  createCFG merged_AST;
+  let translated_AST = translate merged_AST in
+  Cilfacade.ugglyImperativeHack := translated_AST;
+  translated_AST
 
 (** Perform the analysis over the merged AST.  *)
 let do_analyze merged_AST =
@@ -261,7 +344,11 @@ let main =
   let _ = main_running := true in
   try
     Stats.reset Stats.SoftwareTimer;  
-    Cilfacade.init ();
+    initCIL ();
+    Mergecil.ignore_merge_conflicts := true;
+    (*lineDirectiveStyle := None;*)
+    Rmtmps.keepUnused := true;
+    print_CIL_Input := true;
     parse_arguments ();
     handle_flags ();
     preprocess_files () |> merge_preprocessed |> do_analyze;

@@ -1,5 +1,5 @@
 module GU = Goblintutil
-open Cil
+open Gil
 open Pretty
 
 module ProgLines : Printable.S with type t = location =

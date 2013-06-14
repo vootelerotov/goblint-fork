@@ -36,7 +36,7 @@ open Batteries
 open GobConfig
 open Analyses
 open Pretty
-open Cil
+open Gil
 
 
 type 'a domRecord = {
@@ -830,7 +830,7 @@ struct
   let context_list = ref []
 
   let init () = 
-    if Messages.tracing then Messages.trace "spec_init" "Initializing ...\n\n";
+    if GMessages.tracing then GMessages.trace "spec_init" "Initializing ...\n\n";
     Dom.init ();
     Glob.Val.init ();
     let sense_ds = get_list "ana.path_sens" |> List.map Json.string in
@@ -849,7 +849,7 @@ struct
     List.iter (fun x ->
         if uses x.featurename 
         then begin 
-          if Messages.tracing then Messages.trace "spec_init" "Initializing %s.\n\n" x.featurename;
+          if GMessages.tracing then GMessages.trace "spec_init" "Initializing %s.\n\n" x.featurename;
           x.init ()
         end else ()
     ) !analysesList
@@ -1095,7 +1095,7 @@ struct
   let eval_funvar ctx exp : varinfo list = 
     match query ctx (Queries.EvalFunvar exp) with
       | `LvalSet ls -> Queries.LS.fold (fun ((x,_)) xs -> x::xs) ls [] 
-      | _ -> Messages.bailwith ("EvalFunvar: Failed to evaluate function expression "^(sprint 80 (d_exp () exp)))
+      | _ -> GMessages.bailwith ("EvalFunvar: Failed to evaluate function expression "^(sprint 80 (d_exp () exp)))
 
 (*  (* fork over all analyses and combine values of equal varinfos *)
   let fork ctx r v args =
@@ -1405,7 +1405,7 @@ struct
       if not (exists (fun (y',_) -> y=y') xs) then begin
         let xn = assoc x !analyses_table in
         let yn = assoc y !analyses_table in
-        Legacy.Printf.fprintf !Messages.warn_out "Activated analysis '%s' depends on '%s' and '%s' is not activated.\n" xn yn yn;
+        Legacy.Printf.fprintf !GMessages.warn_out "Activated analysis '%s' depends on '%s' and '%s' is not activated.\n" xn yn yn;
         raise Goblintutil.BailFromMain
       end
     in
@@ -1416,7 +1416,7 @@ struct
     let map' f = 
       let f x = 
         try Some (f x) 
-        with Not_found -> Legacy.Printf.fprintf !Messages.warn_out "Analysis '%s' not found. Ignoring.\n" x;None
+        with Not_found -> Legacy.Printf.fprintf !GMessages.warn_out "Analysis '%s' not found. Ignoring.\n" x;None
       in
       List.filter_map f
     in

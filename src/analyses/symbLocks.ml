@@ -5,7 +5,7 @@ module LP = Exp.LockingPattern
 module Exp = Exp.Exp
 module VarEq = VarEq.Spec
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 
@@ -87,7 +87,7 @@ struct
       | `Unlock ->
           [Dom.remove ctx.ask (List.hd arglist) ctx.local, integer 1, true]
       | `Unknown fn when VarEq.safe_fn fn ->
-          Messages.warn ("Assume that "^fn^" does not change lockset.");
+          GMessages.warn ("Assume that "^fn^" does not change lockset.");
           [ctx.local, integer 1, true]
       | `Unknown x -> begin
           let st = 

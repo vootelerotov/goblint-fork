@@ -1,6 +1,6 @@
 (** Another OSEK analysis. *)
 
-open Cil
+open Gil
 open Pretty
 open Analyses
 open OilUtil
@@ -174,7 +174,7 @@ struct
     let _ = Hashtbl.iter report_trans funs in
      if !transactional then 
         print_endline "Goblint did not find any non-transactional behavior in this program!";
-    Base.Main.finalize ()
+    GBase.Main.finalize ()
 
   let init () = ()
 
