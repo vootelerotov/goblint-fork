@@ -1,4 +1,4 @@
-all : plug
+all : opt
 	
 % :
 	@./make.sh $@

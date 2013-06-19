@@ -7,6 +7,7 @@ open Printf
 open Json
 open Goblintutil
 open Cil
+open Cil_types
 module E = Errormsg
 
 (** Print version and bail. *)
@@ -14,7 +15,7 @@ let print_version ch =
   let open Version in let open GConfig in
   let f ch b = if b then fprintf ch "enabled" else fprintf ch "disabled" in
   printf "Goblint version: %s\n" goblint;
-  printf "Cil version:     %s (%s)\n" Cil.cilVersion cil;
+  printf "Frama-C version: %s\n" Config.version;
   printf "Configuration:   tracing %a, tracking %a (n=%d)\n" f tracing f tracking track_n ;
   raise BailFromMain
 
@@ -196,30 +197,7 @@ let preprocess_files () =
 
 let translate ast = Gil.dummyFile
 
-class allBBVisitor = object
-  inherit nopCilVisitor 
-  method vstmt s =
-    match s.skind with
-      | Instr(il) ->
-          let list_of_stmts = 
-            List.map (fun one_inst -> mkStmtOneInstr one_inst) il in
-          let block = mkBlock list_of_stmts in
-            ChangeDoChildrenPost(s, (fun _ -> s.skind <- Block(block); s))
-      | _ -> DoChildren
-
-  method vvdec _ = SkipChildren
-  method vexpr _ = SkipChildren
-  method vlval _ = SkipChildren
-  method vtype _ = SkipChildren
-end 
-
-let end_basic_blocks f =
-  let thisVisitor = new allBBVisitor in
-  visitCilFileSameGlobals thisVisitor f  
-
 let createCFG (fileAST: file) =
-  end_basic_blocks fileAST; 
-  (* Partial.calls_end_basic_blocks fileAST; *)
   Partial.globally_unique_vids fileAST; 
   iterGlobals fileAST (fun glob -> 
     match glob with

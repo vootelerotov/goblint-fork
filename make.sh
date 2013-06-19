@@ -5,9 +5,9 @@ set -e
 scripts/set_version.sh
 
 TARGET=src/goblint
-FLAGS="-no-links -use-ocamlfind -j 8 -no-log -ocamlopt ocamlopt.opt"
-OCAMLBUILD=ocamlbuild
 FRAMA="/usr/local/lib/frama-c"
+FLAGS="-cflags -for-pack,Goblint -cflags -I,$FRAMA -lflags -I,$FRAMA -no-links -use-ocamlfind -j 8 -no-log -ocamlopt ocamlopt.opt"
+OCAMLBUILD=ocamlbuild
 
 ocb() {
   OCAMLFIND_IGNORE_DUPS_IN="$FRAMA" $OCAMLBUILD $FLAGS $*
@@ -34,8 +34,7 @@ rule() {
     byte)    ocb $TARGET.byte &&
              cp _build/$TARGET.byte goblint.byte
              ;;
-    plug*)   FLAGS="-cflags -for-pack,Goblint -cflags -I,$FRAMA -lflags -I,$FRAMA $FLAGS";
-             ocb frama.cmxs && sudo mv _build/src/frama.cmxs $FRAMA/plugins/Goblint.cmxs
+    plug*)   ocb frama.cmxs && sudo mv _build/src/frama.cmxs $FRAMA/plugins/Goblint.cmxs
              ;;
     all)     ocb $TARGET.native $TARGET.byte &&
              cp _build/$TARGET.native goblint &&

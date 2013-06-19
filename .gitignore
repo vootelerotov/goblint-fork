@@ -9,7 +9,7 @@ goblint
 goblint.byte
 goblint.json
 src/version.ml
-src/config.ml
+src/gConfig.ml
 src/goblint.ml
 tests/bench.txt
 .DS_Store
