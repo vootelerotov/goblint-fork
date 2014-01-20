@@ -1,0 +1,21 @@
+{
+  "ana" : {
+    "activated"  : [["base", "escape", "mutex"]],
+    "ctx_insens" : [],
+    "int" : {
+      "interval" : false,
+      "trier"    : true
+    }
+  },
+  "dbg" : {
+    "verbose" : true
+  },
+  "exp" : {
+    "addr-context" : true,
+    "earlyglobs" : false
+  },
+  "printstats" : true,
+  "noverify" : false,
+//  "solver" : "widen1",
+  "result" : "none"
+}

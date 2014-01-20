@@ -955,7 +955,7 @@ struct
       if !race_free then 
         print_endline "Goblint did not find any Data Races in this program!"
       else if get_bool "dbg.verbose" then
-        BatPrintf.printf "%!raceLines = %d%!\n" (LineSet.cardinal !err_lines);
+        BatPrintf.printf "%!Warnings on %d lines%!\n" (LineSet.cardinal !err_lines);
     end else if not (get_bool "dbg.debug") then begin
       print_endline "NB! That didn't seem like a multithreaded program.";
       print_endline "Try `goblint --help' to do something other than Data Race Analysis."
