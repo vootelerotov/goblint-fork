@@ -151,7 +151,7 @@ struct
 
     let enter_with st fd =
       let args = List.map (fun x -> MyCFG.unknown_exp) fd.sformals in
-      let ents = Spec.enter None (Lval (Var fd.svar,NoOffset)) args st in
+      let ents = Spec.enter None fd.svar args st in
       (fd.svar, ents)
     in
 

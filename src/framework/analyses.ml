@@ -480,23 +480,87 @@ sig
 
   val startstate: varinfo -> D.t
 
-  val body: fundec -> D.t -> D.t
-  val assign : lval -> exp -> D.t -> D.t  
-  val enter : lval option -> exp -> exp list -> D.t -> D.t  
+  val assign: lval -> exp -> D.t -> D.t
+  val branch: exp -> bool -> D.t -> D.t
+  val body  : fundec -> D.t -> D.t
+  val return: exp option  -> fundec -> D.t -> D.t
+
+  val enter   : lval option -> varinfo -> exp list -> D.t -> D.t
+  val combine : lval option -> exp -> varinfo -> exp list -> D.t -> D.t -> D.t
+  val special : lval option -> varinfo -> exp list -> D.t -> D.t
 end
 
-module UnitBackwardSpec : BackwardSpec = 
+module UnitBackwardSpec : BackwardSpec =
 struct
-  module D = Lattice.Unit
-  module G = Lattice.Unit
-
   let name = "unit"
 
-  let startstate _ = ()
+  module ID = IntDomain.Integers
+  module ISD = SetDomain.ToppedSet (ID) (struct let topname = "bla" end)
 
-  let body f st = st
-  let assign lv rv st = st
-  let enter lvo fn args st = st
+  module D = ISD
+  module G = Lattice.Unit
+
+  class constVisitorClass (ctx : D.t ref) = object(self)
+    inherit nopCilVisitor
+
+    method vexpr (e:exp) =
+      (match e with
+      | Const (CInt64 (i, _, _)) ->
+        ctx := ISD.add (ID.of_int (i)) (!ctx)
+      | _ ->
+        ());
+      DoChildren
+  end
+
+  (* transfer functions *)
+  let assign (lval:lval) (rval:exp) ctx : D.t =
+    let ct = ref ctx in
+      ignore (visitCilLval (new constVisitorClass ct) lval);
+      ignore (visitCilExpr (new constVisitorClass ct) rval);
+      !ct
+
+  let branch (exp:exp) (tv:bool) ctx : D.t =
+    let ct = ref ctx in
+      ignore (visitCilExpr (new constVisitorClass ct) exp);
+      !ct
+
+  let body (f:fundec) ctx : D.t =
+    let ct = ref ctx in
+     ignore (visitCilFunction (new constVisitorClass ct) f);
+     !ct
+
+  let return (exp:exp option) (f:fundec) ctx : D.t =
+    match exp with
+    | Some e ->
+      let ct = ref ctx in
+        ignore (visitCilExpr (new constVisitorClass ct) e);
+        !ct
+    | _ ->
+      ctx
+
+  let enter (lval: lval option) (f:varinfo) (args:exp list) ctx : D.t =
+    let ct = ref ctx in
+      (match lval with | Some l -> ignore (visitCilLval (new constVisitorClass ct) l) | _ -> ());
+      ignore (visitCilVarDecl (new constVisitorClass ct) f);
+      List.iter (fun e -> ignore (visitCilExpr (new constVisitorClass ct) e)) args;
+      !ct
+
+  let combine (lval:lval option) fexp (f:varinfo) (args:exp list) (au:D.t) ctx : D.t =
+    let ct = ref (D.join au ctx) in
+      (match lval with | Some l -> ignore (visitCilLval (new constVisitorClass ct) l) | _ -> ());
+      ignore (visitCilExpr (new constVisitorClass ct) fexp);
+      ignore (visitCilVarDecl (new constVisitorClass ct) f);
+      List.iter (fun e -> ignore (visitCilExpr (new constVisitorClass ct) e)) args;
+      !ct
+
+  let special (lval: lval option) (f:varinfo) (arglist:exp list) ctx : D.t =
+    let ct = ref ctx in
+      (match lval with | Some l -> ignore (visitCilLval (new constVisitorClass ct) l) | _ -> ());
+      ignore (visitCilVarDecl (new constVisitorClass ct) f);
+      List.iter (fun e -> ignore (visitCilExpr (new constVisitorClass ct) e)) arglist;
+      !ct
+
+  let startstate v = D.top ()
 end
 
 (** A side-effecting system. *)
@@ -645,7 +709,7 @@ struct
   let val_of x = x
   (* Assume that context is same as local domain. *)
 
-  let part_access _ _ _ _ = 
+  let part_access _ _ _ _ =
     (Access.LSSSet.singleton (Access.LSSet.empty ()), Access.LSSet.empty ())
     (* No partitioning on accesses and not locks *)
 end

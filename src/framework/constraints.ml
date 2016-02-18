@@ -260,7 +260,46 @@ struct
   module D = S.D
   module G = S.G
 
-  let tf (u:lv) ((e:(Cil.location * MyCFG.edge) list),(v:MyCFG.node)) get set gget gset = get v
+  let tf_assign lv rv u e v d get set =
+    S.assign lv rv d
+
+  let tf_entry fd u e v d get set =
+    S.body fd d
+
+  let tf_test ex tv u e v d get set =
+    S.branch ex tv d
+
+  let tf_ret ret fd u e v d get set =
+    S.return ret fd d
+
+  let tf_normal_call ctx lv e (f:varinfo) args (u:lv) (edge:MyCFG.edge) (v:lv) get set : ld =
+      let _ = set (Function f) (S.enter lv f args ctx) in
+      S.combine lv e f args (get (FunctionEntry f)) ctx
+
+  let tf_special_call ctx lv f args = S.special lv f args ctx
+
+  let tf_proc lv e args u edge v d get set =
+    match e with
+      | Lval (Var f, NoOffset) -> let has_dec = try ignore (Cilfacade.getdec f); true with Not_found -> false in
+                                  if has_dec && not (LibraryFunctions.use_special f.vname)
+                                  then tf_normal_call d lv e f args u edge v get set
+                                  else tf_special_call d lv f args
+      | _ -> ignore (M.warn "############"); d
+
+  let tf (u:lv) (e:MyCFG.edge) (v:lv) (d:ld) get set =
+    begin match e with
+      | Assign (lv,rv) -> tf_assign lv rv
+      | Entry f        -> tf_entry f
+      | Ret (r,fd)     -> tf_ret r fd
+      | Test (p,b)     -> tf_test p b
+      | Proc (r,f,ars) -> tf_proc r f ars
+      | ASM _          -> fun _ _ _ d _ _ -> ignore (M.warn "ASM statement ignored."); d
+      | Skip           -> fun _ _ _ d _ _ -> d
+      | SelfLoop       -> fun _ _ _ d _ _ -> d
+    end u e v d get set
+
+  let tf (u:lv) ((e:(Cil.location * MyCFG.edge) list), (v:lv)) get set gget gset =
+    List.fold_left (fun d (_, ed) -> tf u ed v d get set) (get v) e
 
   let system v = List.map (tf v) (Cfg.next v)
 end
