@@ -199,6 +199,9 @@ struct
     Goblintutil.timeout do_analyze_using_solver () (float_of_int (get_int "dbg.timeout"))
       (fun () -> Messages.waitWhat "Timeout reached!");
 
+    if (get_bool "exp.cfgdot") then
+      MyCFG.dead_code_cfg file (module Cfg:CfgBidir) (fun _ -> true);
+
     (* Spec.finalize (); *)
 
     if (get_bool "dbg.verbose") then print_endline "Generating output.";

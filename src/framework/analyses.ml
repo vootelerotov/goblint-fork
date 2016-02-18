@@ -497,7 +497,12 @@ struct
   module ID = IntDomain.Integers
   module ISD = SetDomain.ToppedSet (ID) (struct let topname = "bla" end)
 
-  module D = ISD
+  module D =
+  struct
+    include ISD
+    let printXml f xs =
+      BatPrintf.fprintf f "<context></context><path><analysis name=\"bla\">\n%a\n</analysis></path>" printXml xs
+  end
   module G = Lattice.Unit
 
   class constVisitorClass (ctx : D.t ref) = object(self)
