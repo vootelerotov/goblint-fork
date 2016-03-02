@@ -58,11 +58,13 @@ struct
   let otherstate v = CPA.bot (), Flag.start_multi v
   let exitstate  v = CPA.bot (), Flag.start_main v
 
-  let morphstate v (cpa,fl) = cpa, Flag.start_single v
-  let create_tid v =
+  let morphstate v (cpa,fl) = 
+    cpa, Flag.start_single v
+  let create_tid v fl =
     let loc = !Tracing.current_loc in
-    Flag.spawn_thread loc v
-  let threadstate v = CPA.bot (), create_tid v
+    Flag.spawn_thread loc v fl
+  let threadstate v fl = 
+    CPA.bot (), create_tid v fl
 
   type cpa = CPA.t
   type flag = Flag.t
@@ -559,63 +561,6 @@ struct
    * Auxilliary functions
    **************************************************************************)
 
-  let refine_answer (ask: Q.ask) question prior_value =
-    let refine_to_interval answer_interval_inferior answer_interval_superior =
-      match prior_value with
-      | `Int prior_value  -> (
-          if not(ID.is_top prior_value) then (
-            match ID.minimal prior_value, ID.maximal prior_value with
-            | Some prior_inferior, Some prior_superior ->
-              `Int (ID.meet (ID.of_interval (prior_inferior, prior_superior)) (ID.of_interval (answer_interval_inferior, answer_interval_superior)))
-            | _ -> `Int (ID.of_interval (answer_interval_inferior, answer_interval_superior)))
-          else `Int (ID.of_interval (answer_interval_inferior, answer_interval_superior))
-        )
-      | `Bot -> `Bot
-      | _ -> `Int (ID.of_interval (answer_interval_inferior, answer_interval_superior))
-    in
-    let refine_to_set excl_list =
-      match prior_value with
-      | `Int prior_value  -> (
-          match ID.to_excl_list prior_value with
-          | Some prior_excl_list -> `Int (ID.meet (ID.of_excl_list prior_excl_list) (ID.of_excl_list excl_list))
-          | _ -> `Int (ID.of_excl_list excl_list)
-        )
-      | `Bot -> `Bot
-      | _ -> `Int (ID.of_excl_list excl_list)
-    in
-    match ask question with
-    | `Int x -> (
-        match prior_value with
-        | `Int prior_value  -> `Int (ID.meet (ID.of_int x) prior_value)
-        | `Bot -> `Bot
-        | _ -> `Int (ID.of_int x)
-      )
-    | `Interval x -> (
-        if IntDomain.Interval.is_top x then prior_value else
-          match IntDomain.Interval.minimal x, IntDomain.Interval.maximal x with
-          | Some x, Some y -> refine_to_interval x y
-          | _ -> prior_value
-      )
-    | `IntSet x -> (
-        if IntDomain.Enums.is_top x then prior_value else
-          match IntDomain.Enums.to_excl_list x with
-          | Some excl_list -> refine_to_set excl_list
-          | _ -> prior_value
-      )
-    | _ -> prior_value
-
-  let improve_abstract_value_with_queries ask exp base_value =
-    try
-      if (get_bool "ana.int.queries") then
-        match refine_answer ask (Queries.EvalInt exp) base_value with
-        | `Top -> base_value
-        | x -> x
-      else base_value
-    with Not_found -> base_value
-
-  let eval_rv_with_query (a: Q.ask) (gs:glob_fun) (st: store) (exp:exp) =
-    improve_abstract_value_with_queries a exp (eval_rv a gs st exp)
-
   let rec bot_value a (gs:glob_fun) (st: store) (t: typ): value =
     let rec bot_comp compinfo: ValueDomain.Structs.t =
       let nstruct = ValueDomain.Structs.top () in
@@ -630,7 +575,7 @@ struct
     | TArray (_, None, _) -> `Array (ValueDomain.CArrays.bot ())
     | TArray (ai, Some exp, _) -> begin
         let default = `Array (ValueDomain.CArrays.bot ()) in
-        match eval_rv_with_query a gs st exp with
+        match eval_rv a gs st exp with
         | `Int n -> begin
             match ID.to_int n with
             | Some n -> `Array (ValueDomain.CArrays.make (Int64.to_int n) (bot_value a gs st ai))
@@ -793,7 +738,6 @@ struct
       else
         let oldval = get a gs st addr in
         let new_val = apply_invariant oldval value in
-        let new_val = improve_abstract_value_with_queries a (Lval lval) new_val in
         if M.tracing then M.traceu "invariant" "New value is %a\n" VD.pretty new_val;
         (* make that address meet the invariant, i.e exclusion sets will be joined *)
         if is_some_bot new_val then (
@@ -872,7 +816,7 @@ struct
           (`List (ValueDomain.Lists.bot ()))
       end
     | _ ->
-      let rval_val = eval_rv_with_query ctx.ask ctx.global ctx.local rval in
+      let rval_val = eval_rv ctx.ask ctx.global ctx.local rval in
       let lval_val = eval_lv ctx.ask ctx.global ctx.local lval in
       (* let sofa = AD.short 80 lval_val^" = "^VD.short 80 rval_val in *)
       (* M.debug @@ sprint ~width:80 @@ dprintf "%a = %a\n%s" d_plainlval lval d_plainexp rval sofa; *)
@@ -890,7 +834,8 @@ struct
           let find_fps e xs = Addr.to_var_must e @ xs in
           let vars = AD.fold find_fps adrs [] in
           let funs = List.filter (fun x -> isFunctionType x.vtype) vars in
-          List.iter (fun x -> ctx.spawn x (threadstate x)) funs
+	  let (_,fl) = ctx.local in 
+          List.iter (fun x -> ctx.spawn x (threadstate x fl)) funs
         | _ -> ()
       end;
       set_savetop ctx.ask ctx.global ctx.local lval_val rval_val
@@ -907,7 +852,7 @@ struct
 
   let branch ctx (exp:exp) (tv:bool) : store =
     Locmap.replace Deadcode.dead_branches_cond !Tracing.next_loc exp;
-    let valu = eval_rv_with_query ctx.ask ctx.global ctx.local exp in
+    let valu = eval_rv ctx.ask ctx.global ctx.local exp in
     if M.tracing then M.traceli "branch" ~subsys:["invariant"] "Evaluating branch for expression %a with value %a\n" d_exp exp VD.pretty valu;
     if M.tracing then M.tracel "branchosek" "Evaluating branch for expression %a with value %a\n" d_exp exp VD.pretty valu;
     (* First we want to see, if we can determine a dead branch: *)
@@ -969,7 +914,7 @@ struct
     | _ -> let nst = rem_many ctx.local (fundec.sformals @ fundec.slocals) in
       match exp with
       | None -> nst
-      | Some exp -> set ctx.ask ctx.global nst (return_var ()) (eval_rv_with_query ctx.ask ctx.global ctx.local exp)
+      | Some exp -> set ctx.ask ctx.global nst (return_var ()) (eval_rv ctx.ask ctx.global ctx.local exp)
 
 
   (**************************************************************************
@@ -1068,7 +1013,7 @@ struct
     (* We define the function that invalidates all the values that an address
      * expression e may point to *)
     let invalidate_exp e =
-      match eval_rv_with_query ask gs st e with
+      match eval_rv ask gs st e with
       (*a null pointer is invalid by nature*)
       | `Address a when AD.equal a (AD.null_ptr()) -> []
       | `Address a when not (AD.is_top a) ->
@@ -1089,7 +1034,7 @@ struct
   (* Variation of the above for yet another purpose, uhm, code reuse? *)
   let collect_funargs ask (gs:glob_fun) (st:store) (exps: exp list) =
     let do_exp e =
-      match eval_rv_with_query ask gs st e with
+      match eval_rv ask gs st e with
       | `Address a when AD.equal a (AD.null_ptr ()) -> []
       | `Address a when not (AD.is_top a) ->
         let rble = reachable_vars ask [a] gs st in
@@ -1258,26 +1203,6 @@ struct
         | `Bot   -> `Bot
         | _      -> `Top
       end
-    | Q.EvalInterval e -> begin
-        match eval_rv ctx.ask ctx.global ctx.local e with
-        | `Int e -> (
-              match ID.is_top e with
-                | true -> `Top
-                | false -> (
-                    match ID.minimal e, ID.maximal e with
-                      Some i, Some s -> `Interval (IntDomain.Interval.of_interval (i,s))
-                    | _ -> `Top
-                  )
-          )
-        | `Bot   -> `Bot
-        | _      -> `Top
-      end
-    | Q.EvalIntSet e -> begin
-        match eval_rv ctx.ask ctx.global ctx.local e with
-        | `Int e -> (match ID.to_excl_list e with Some l -> `IntSet (IntDomain.Enums.of_excl_list l) | _ -> `Top)
-        | `Bot   -> `Bot
-        | _      -> `Top
-      end
     | Q.MayPointTo e -> begin
         match eval_rv ctx.ask ctx.global ctx.local e with
         | `Address a when AD.is_top a -> `LvalSet (Q.LS.top ())
@@ -1350,7 +1275,7 @@ struct
   let make_entry ctx ?nfl:(nfl=(snd ctx.local)) fn args: D.t =
     let cpa,fl as st = ctx.local in
     (* Evaluate the arguments. *)
-    let vals = List.map (eval_rv_with_query ctx.ask ctx.global st) args in
+    let vals = List.map (eval_rv ctx.ask ctx.global st) args in
     (* generate the entry states *)
     let fundec = Cilfacade.getdec fn in
     (* If we need the globals, add them *)
@@ -1380,13 +1305,13 @@ struct
           | Some x -> [x]
           | None -> List.map (fun x -> MyCFG.unknown_exp) fd.sformals
         in
-        let nfl = create_tid v in
+        let nfl = create_tid v fl in
         let nst = make_entry ctx ~nfl:nfl v args in
         v, nst
       with Not_found ->
         if not (LF.use_special f.vname) then
           M.warn ("creating a thread from unknown function " ^ v.vname);
-        v, (cpa, create_tid v)
+        v, (cpa, create_tid v fl)
     in
     match LF.classify f.vname args with
     (* handling thread creations *)
@@ -1584,7 +1509,7 @@ struct
       cpa, Flag.make_main fl
     (* handling thread joins... sort of *)
     | `ThreadJoin (id,ret_var) ->
-      begin match (eval_rv_with_query ctx.ask gs st ret_var) with
+      begin match (eval_rv ctx.ask gs st ret_var) with
         | `Int n when n = ID.of_int 0L -> cpa,fl
         | _      -> invalidate ctx.ask gs st [ret_var]
       end
@@ -1651,7 +1576,7 @@ struct
               in
               if List.fold_right f flist false && not (get_bool "exp.single-threaded") then begin
                 let new_fl =
-                  if (not !GU.multi_threaded) && get_bool "exp.unknown_funs_spawn" then begin
+                  if get_bool "exp.unknown_funs_spawn" then begin
                     GU.multi_threaded := true;
                     Flag.make_main fl
                   end else
@@ -1708,12 +1633,17 @@ struct
   let part_access ctx e v w =
     let es = Access.LSSet.empty () in
     let _, fl = ctx.local in
-    if BaseDomain.Flag.is_multi fl && not (is_special_ignorable_thread fl) then begin
-      if is_unique ctx fl then
-        let tid = BaseDomain.Flag.short 20 fl in
-        (Access.LSSSet.singleton es, Access.LSSet.add ("thread",tid) es)
-      else 
-        (Access.LSSSet.singleton es, es)
+    let ((phases,unique),thread_id) = fl in
+    if BaseDomain.Flag.is_multi fl  then begin
+      let right_side = 
+	if is_unique ctx fl then
+          let tid = BaseDomain.Flag.short_thread_id 80 thread_id in
+          Access.LSSet.add ("thread",tid) es
+	else 
+          es
+      in
+      let phases_short = BaseDomain.Flag.short_phases 80 phases in
+      (Access.LSSSet.singleton (Access.LSSet.add ("phase:",phases_short) es), right_side)
     end else 
       Access.LSSSet.empty (), es
 end

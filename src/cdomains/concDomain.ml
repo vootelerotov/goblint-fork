@@ -49,6 +49,7 @@ module Simple = struct
   let name () = "MT mode"
 end
 
+
 (** Type to represent an abstract thread ID. *)
 module Thread = struct
   include Basetype.Variables
@@ -106,6 +107,66 @@ module SimpleThreadDomain = struct
     | _ -> false
 end
 
+module NotSimple = struct 
+  module MultiThreaded = IntDomain.MakeBooleans (struct let truename = "multithreaded"
+							let falsename = "singlethreaded" end)
+
+  module PhaseSet = struct
+    include SetDomain.ToppedSet(Basetype.Phase)( struct let topname = "All" end)
+    let is_init_exit xs =
+      let is_single x = match x with
+	| Basetype.Init -> true
+	| Basetype.Exit -> true
+	| _ -> false
+      in
+      match xs with 
+      | All -> false
+      | _ -> for_all is_single xs
+    let init_phase ()  =  singleton Basetype.Init
+    let exit_phase ()  =  singleton Basetype.Exit
+    let init_spawn_phase () = singleton Basetype.InitSpawn
+    let exit_spawn_phase () = singleton Basetype.ExitSpawn
+    let transform_phase phase = match phase with
+      | Basetype.Init -> Basetype.InitSpawn
+      | Basetype.Exit -> Basetype.ExitSpawn
+      | _ -> phase
+    let transform phases = map transform_phase phases 
+    (*let short w x : string = 
+      match x with
+      | All -> "All"
+      | Set t -> Printexc.print_raw_backtrace stdout (Printexc.get_callstack 5);
+	print_int w;
+	S.short max_int t*)
+  end
+
+  module Unique = IntDomain.MakeBooleans (struct let truename = "not unique" 
+						 let falsename = "unique" end)
+
+ 
+  module LiftedThreads  = 
+  struct 
+    include Lattice.Flat (Thread) (struct let bot_name = "Bot threads"
+					  let top_name = "Top threads" end)
+    let name () = "Thread"
+  end
+  include Lattice.ProdSimple (Lattice.ProdSimple (PhaseSet) (Unique)) (LiftedThreads)
+  let is_multi ((xs,_),_) =  not (PhaseSet.is_init_exit xs)
+  let is_bad ((_,y),_) = y
+  let get_multi () = ((PhaseSet.top (),Unique.top ()), LiftedThreads.top())
+  let make_main ((phases,y),z) =  ((PhaseSet.transform phases, y), z)
+  let spawn_thread l v ((phases,_),_) = ((PhaseSet.transform phases , Unique.top ()), `Lifted (Thread.spawn_thread l v ))
+  let start_single v : t = ((PhaseSet.init_phase () , Unique.bot ()), `Lifted (Thread.start_thread v))
+  let start_main v : t = ((PhaseSet.exit_phase (), Unique.bot()), `Lifted (Thread.start_thread v))
+  let start_multi v : t = ((PhaseSet.top(), Unique.top()), `Lifted (Thread.start_thread v))
+  let switch (x,y,z) (x1,y1,_) = (Simple.switch x x1, Simple.switch y y1, z)
+  let short_phases length phases = PhaseSet.short length phases
+  let short_thread_id length thread_id = LiftedThreads.short length thread_id
+end
+
+(** Thread domain that separtes between uniqe single thread,
+  * multithread enviornment with the thread being unique and 
+  * multihreaded enviornment with the thread not being unique. 
+**)
 module ThreadSet = SetDomain.ToppedSet (Thread) (struct let topname = "All Threads" end)
 
 module CreatedThreadSet =

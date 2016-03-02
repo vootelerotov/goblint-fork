@@ -12,7 +12,7 @@ end
 
 module Flag =
 struct
-  include ConcDomain.SimpleThreadDomain
+  include ConcDomain.NotSimple
   let name () = "flag domain"
 end
 

@@ -50,6 +50,8 @@ struct
   let printXml f x = BatPrintf.fprintf f "<value>\n<data>\n%s\n</data>\n</value>\n" (Goblintutil.escape (short 80 x))
 end
 
+
+
 module Variables =
 struct
   include Printable.Std
@@ -138,6 +140,38 @@ struct
   let pretty_diff () (x,y) = dprintf "%s: %a not leq %a" (name ()) pretty x pretty y
   let printXml f x = BatPrintf.fprintf f "<value>\n<data>\n%s\n</data>\n</value>\n" (Goblintutil.escape (short 80 x))
 end
+
+type phase = Init | InitSpawn | Exit | ExitSpawn
+
+module Phase : Printable.S with type t = phase   = 
+struct 
+  include Printable.Std
+  open Pretty
+  type t = phase
+  let isSimple _ = true
+  let copy x = x
+  let equal x y = x == y
+  let hash (x: t) = Hashtbl.hash x
+  let name () = "phase"
+
+  let short _ x = match x with
+    | Init -> "init"
+    | InitSpawn -> "initSpawn"
+    | Exit -> "exit"
+    | ExitSpawn -> "exitSpawn"
+  let toXML_f sf x =
+    let esc = Goblintutil.escape in
+    Xml.Element ("Leaf", ["text",esc (sf 80 x)],[])
+  let pretty_f sf () x = 
+    text (sf 80 x)
+  let toXML m = toXML_f short m
+  let pretty () x = pretty_f short () x
+  let pretty_diff () (x,y) = dprintf "%s: %a not equal with %a" (name ()) pretty x pretty y
+  let printXml f x = 
+    let esc = Goblintutil.escape in
+    BatPrintf.fprintf f "<value>\n<data>\n%s\n</data>\n</value>\n" (esc (short 80 x))
+end
+  
 
 module RawStrings: Printable.S with type t = string =
 struct
