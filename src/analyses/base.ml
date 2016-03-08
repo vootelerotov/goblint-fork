@@ -1637,7 +1637,7 @@ struct
     if BaseDomain.Flag.is_multi fl  then begin
       let right_side = 
 	if is_unique ctx fl then
-          let tid = BaseDomain.Flag.short_thread_id 80 thread_id in
+          let tid = BaseDomain.Flag.short 80 fl in
           Access.LSSet.add ("thread",tid) es
 	else 
           es
