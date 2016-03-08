@@ -1630,7 +1630,7 @@ struct
       List.mem f.vname fs
     | _ -> false
 
-  let part_access ctx e v w =
+  let part_access ctx e v w  =
     let es = Access.LSSet.empty () in
     let _, fl = ctx.local in
     let ((phases,unique),thread_id) = fl in
@@ -1642,10 +1642,9 @@ struct
 	else 
           es
       in
-      let phases_short = BaseDomain.Flag.short_phases 80 phases in
-      (Access.LSSSet.singleton (Access.LSSet.add ("phase:",phases_short) es), right_side)
+      (BaseDomain.Flag.left_side phases , right_side)
     end else 
-      Access.LSSSet.empty (), es
+      (Access.LSSSet.empty (), es)
 end
 
 let _ =

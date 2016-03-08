@@ -130,7 +130,14 @@ module NotSimple = struct
       | Basetype.Init -> Basetype.InitSpawn
       | Basetype.Exit -> Basetype.ExitSpawn
       | _ -> phase
-    let transform phases = map transform_phase phases 
+    let transform phases = map transform_phase phases
+    let left_side phases =
+      let add_to_it x s = Access.LSSSet.add (Access.LSSet.singleton ("phase",Basetype.Phase.short 80 x)) s
+      in
+      match phases with
+      | All -> Access.LSSSet.singleton (Access.LSSet.empty ())
+      | Set s -> S.fold add_to_it s (Access.LSSSet.empty ())
+    
     (*let short w x : string = 
       match x with
       | All -> "All"
@@ -150,7 +157,7 @@ module NotSimple = struct
     let name () = "Thread"
   end
   include Lattice.ProdSimple (Lattice.ProdSimple (PhaseSet) (Unique)) (LiftedThreads)
-  let is_multi ((xs,_),_) =  not (PhaseSet.is_init_exit xs)
+  let is_multi ((xs,_),_) = not (PhaseSet.is_init_exit xs)
   let is_bad ((_,y),_) = y
   let get_multi () = ((PhaseSet.top (),Unique.top ()), LiftedThreads.top())
   let make_main ((phases,y),z) =  ((PhaseSet.transform phases, y), z)
@@ -159,8 +166,20 @@ module NotSimple = struct
   let start_main v : t = ((PhaseSet.exit_phase (), Unique.bot()), `Lifted (Thread.start_thread v))
   let start_multi v : t = ((PhaseSet.top(), Unique.top()), `Lifted (Thread.start_thread v))
   let switch (x,y,z) (x1,y1,_) = (Simple.switch x x1, Simple.switch y y1, z)
-  let short_phases length phases = PhaseSet.short length phases
   let short_thread_id length thread_id = LiftedThreads.short length thread_id
+  let left_side (phases: PhaseSet.t) = PhaseSet.left_side phases
+
+  let short w elem =
+  let ((x,y),z) = elem in 
+  let tid = LiftedThreads.short w z in
+  if is_bad elem then tid else tid ^ "!"
+  let toXML m = toXML_f short m
+  let pretty () x = pretty_f short () x
+  let same_tid x y =
+    match x,y with
+    | (_, `Lifted x), (_, `Lifted y) -> Thread.equal x y
+    | _ -> false
+    
 end
 
 (** Thread domain that separtes between uniqe single thread,
