@@ -1366,6 +1366,13 @@ struct
     let vals = List.map (eval_rv_with_query ctx.ask ctx.global st) args in
     (* generate the entry states *)
     let fundec = Cilfacade.getdec fn in
+    let ((phases,unique),thread) = nfl in 
+    Printf.printf "%s \n%!" fundec.svar.vname;
+    let new_flag = if fundec.svar.vname = "file_open" || fundec.svar.vname ="file_release" 
+      then
+	(((BaseDomain.Flag.PhaseSet.transform_to_file_phases fundec.svar.vname phases),unique),thread)   else nfl
+    in
+    Printf.printf  "%s \n%!" (BaseDomain.Flag.PhaseSet.short 80 (fst (fst new_flag )));
     (* If we need the globals, add them *)
     let new_cpa = if not (!GU.earlyglobs || Flag.is_multi fl) then CPA.filter_class 2 cpa else CPA.filter (fun k v -> V.is_global k && is_private ctx.ask ctx.local k) cpa in
     (* Assign parameters to arguments *)
@@ -1374,7 +1381,7 @@ struct
     (* List of reachable variables *)
     let reachable = List.concat (List.map AD.to_var_may (reachable_vars ctx.ask (get_ptrs vals) ctx.global st)) in
     let new_cpa = CPA.add_list_fun reachable (fun v -> CPA.find v cpa) new_cpa in
-    new_cpa, nfl
+    new_cpa, new_flag
 
   let enter ctx lval fn args : (D.t * D.t) list =
     [ctx.local, make_entry ctx fn args]
@@ -1718,16 +1725,37 @@ struct
     | _ -> false
 
   (* remove this function and everything related to exp.ignored_threads *)
-  let is_special_ignorable_thread = function
+  let is_special_ginorable_thread = function
     | (_, `Lifted f) ->
       let fs = get_list "exp.ignored_threads" |> List.map Json.string in
       List.mem f.vname fs
     | _ -> false
 
   let part_access ctx e v w =
+    let is_file (x: Cil.exp) : bool = 
+      match x with
+      | AddrOf lval -> 
+      begin
+	match lval with
+	| (Var y,_ ) -> Printf.printf "Var with name %s" y.vname; false
+	| (Mem (Lval (Var v,_)),Field (f,_)) -> Printf.printf "Field with name %s in struct %s"  f.fname v.vname; v.vname = "file" 
+	| _ -> false
+      end
+      | _ -> false
+    in
+    let h x = match x with
+      | Some x -> x.vname
+      | _ -> "Other"
+    in
+    Printf.printf "V:  %s \n%!" (h v);
     let es = Access.LSSet.empty () in
     let _, fl = ctx.local in
     let ((phases,unique),thread_id) = fl in
+    let file_phases = if not (is_file e) then 
+	BaseDomain.Flag.PhaseSet.transform_from_file_phases phases
+      else
+	phases
+    in
     if BaseDomain.Flag.is_multi fl  then begin
       let right_side = 
 	if is_unique ctx fl then
@@ -1736,7 +1764,7 @@ struct
 	else 
           es
       in
-      (BaseDomain.Flag.left_side phases , right_side)
+      (BaseDomain.Flag.left_side file_phases , right_side)
     end else 
       (Access.LSSSet.empty (), es)
 end

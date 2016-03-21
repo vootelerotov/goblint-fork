@@ -141,7 +141,7 @@ struct
   let printXml f x = BatPrintf.fprintf f "<value>\n<data>\n%s\n</data>\n</value>\n" (Goblintutil.escape (short 80 x))
 end
 
-type phase = Init | InitSpawn | Exit | ExitSpawn
+type phase = Init | InitSpawn | Exit | ExitSpawn | FileOpen | FileClose
 
 module Phase : Printable.S with type t = phase   = 
 struct 
@@ -159,6 +159,8 @@ struct
     | InitSpawn -> "initSpawn"
     | Exit -> "exit"
     | ExitSpawn -> "exitSpawn"
+    | FileOpen -> "fileOpen"
+    | FileClose -> "fileClose"
   let toXML_f sf x =
     let esc = Goblintutil.escape in
     Xml.Element ("Leaf", ["text",esc (sf 80 x)],[])

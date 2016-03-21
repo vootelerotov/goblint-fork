@@ -122,13 +122,42 @@ module NotSimple = struct
       match xs with 
       | All -> false
       | _ -> for_all is_single xs
+
+
     let init_phase ()  =  singleton Basetype.Init
     let exit_phase ()  =  singleton Basetype.Exit
     let init_spawn_phase () = singleton Basetype.InitSpawn
     let exit_spawn_phase () = singleton Basetype.ExitSpawn
+
+    let transform_to_file_phases name phases =
+      let name_to_phase name = match name with 
+	| "file_open" -> Basetype.FileOpen
+	| "file_release" -> Basetype.FileClose
+	| _ -> raise (Invalid_argument "Should be file_open/file_close")
+      in
+      let phase = name_to_phase name
+      in
+      let helper arg = match arg with
+	| Basetype.InitSpawn -> phase
+	| _ -> arg
+      in
+      map helper phases
+
+    let transform_from_file_phases  phases =
+      let helper phase = match phase with
+	| Basetype.FileOpen -> Basetype.InitSpawn
+	| Basetype.FileClose -> Basetype.InitSpawn
+	| _ -> phase
+      in
+      map helper phases
+
     let transform_phase phase = match phase with
       | Basetype.Init -> Basetype.InitSpawn
       | Basetype.Exit -> Basetype.ExitSpawn
+      | _ -> phase
+    let transform_file_phases phase = match phase with
+      | Basetype.FileOpen -> Basetype.InitSpawn
+      | Basetype.FileClose -> Basetype.InitSpawn
       | _ -> phase
     let transform phases = map transform_phase phases
     let left_side phases =
