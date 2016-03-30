@@ -1366,13 +1366,6 @@ struct
     let vals = List.map (eval_rv_with_query ctx.ask ctx.global st) args in
     (* generate the entry states *)
     let fundec = Cilfacade.getdec fn in
-    let ((phases,unique),thread) = nfl in 
-    Printf.printf "%s \n%!" fundec.svar.vname;
-    let new_flag = if fundec.svar.vname = "file_open" || fundec.svar.vname ="file_release" 
-      then
-	(((BaseDomain.Flag.PhaseSet.transform_to_file_phases fundec.svar.vname phases),unique),thread)   else nfl
-    in
-    Printf.printf  "%s \n%!" (BaseDomain.Flag.PhaseSet.short 80 (fst (fst new_flag )));
     (* If we need the globals, add them *)
     let new_cpa = if not (!GU.earlyglobs || Flag.is_multi fl) then CPA.filter_class 2 cpa else CPA.filter (fun k v -> V.is_global k && is_private ctx.ask ctx.local k) cpa in
     (* Assign parameters to arguments *)
@@ -1381,7 +1374,7 @@ struct
     (* List of reachable variables *)
     let reachable = List.concat (List.map AD.to_var_may (reachable_vars ctx.ask (get_ptrs vals) ctx.global st)) in
     let new_cpa = CPA.add_list_fun reachable (fun v -> CPA.find v cpa) new_cpa in
-    new_cpa, new_flag
+    new_cpa, nfl
 
   let enter ctx lval fn args : (D.t * D.t) list =
     [ctx.local, make_entry ctx fn args]
@@ -1402,7 +1395,13 @@ struct
         in
         let nfl = create_tid v fl in
         let nst = make_entry ctx ~nfl:nfl v args in
-        v, nst
+	let (ncpa,flag) = nst in 
+	let new_flag = if fd.svar.vname = "file_open" || fd.svar.vname ="file_release" 
+	  then
+	    let ((phases,unique),thread) = flag in
+	    (((BaseDomain.Flag.PhaseSet.transform_to_file_phases fd.svar.vname phases),unique),thread)   else flag
+	in
+        v, (ncpa,new_flag)
       with Not_found ->
         if not (LF.use_special f.vname) then
           M.warn ("creating a thread from unknown function " ^ v.vname);
