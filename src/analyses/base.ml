@@ -321,15 +321,15 @@ struct
     (* For address +/- value, we try to do some elementary ptr arithmetic *)
     | `Address p, `Int n  -> begin
         match op with
-          (* For array indexing, e[i] we have *)
-          | IndexPI -> `Address (AD.map (addToAddr n) p)
-          (* Pointer addition e + i, it's the same: *)
-          | PlusPI -> `Address (AD.map (addToAddr n) p)
-          (* Pointer subtracted by a value (e-i) is very similar *)
-          | MinusPI -> let n = ID.neg n in
-            `Address (AD.map (addToAddr n) p)
-          | Mod -> `Int (ID.top ()) (* we assume that address is actually casted to int first*)
-          | _ -> `Address (AD.unknown_ptr ())
+        (* For array indexing, e[i] we have *)
+        | IndexPI -> `Address (AD.map (addToAddr n) p)
+        (* Pointer addition e + i, it's the same: *)
+        | PlusPI -> `Address (AD.map (addToAddr n) p)
+        (* Pointer subtracted by a value (e-i) is very similar *)
+        | MinusPI -> let n = ID.neg n in
+          `Address (AD.map (addToAddr n) p)
+        | Mod -> `Int (ID.top ()) (* we assume that address is actually casted to int first*)
+        | _ -> `Address (AD.top_ptr ())
       end
     (* If both are pointer values, we can subtract them and well, we don't
      * bother to find the result, but it's an integer. *)
@@ -673,17 +673,17 @@ struct
     | TComp ({cstruct=true} as ci,_) -> `Struct (top_comp ci)
     | TComp ({cstruct=false},_) -> `Union (ValueDomain.Unions.top ())
     | TArray (ai, exp, _) ->
-        let default = `Array (ValueDomain.CArrays.top ()) in
-        (match exp with
-        | Some exp ->
-          (match eval_rv_with_query a gs st exp with
+      let default = `Array (ValueDomain.CArrays.top ()) in
+      (match exp with
+       | Some exp ->
+         (match eval_rv_with_query a gs st exp with
           | `Int n -> begin
               match ID.to_int n with
               | Some n -> `Array (ValueDomain.CArrays.make (Int64.to_int n) (bot_value a gs st ai))
               | _ -> default
             end
           | _ -> default)
-        | None -> default)
+       | None -> default)
     | TNamed ({ttype=t}, _) -> top_value a gs st t
     | _ -> `Top
 
@@ -1143,15 +1143,17 @@ struct
         | `Struct n    -> `Struct (ValueDomain.Structs.map replace_val n)
         | `Union (f,v) -> `Union (f,replace_val v)
         | `Blob n      -> `Blob (replace_val n)
+        | `Address x -> `Address (ValueDomain.AD.map ValueDomain.Addr.drop_ints x)
         | x -> x
       in
       CPA.map replace_val st
 
   let context (cpa,fl) =
-    if !GU.earlyglobs then CPA.filter (fun k v -> not (V.is_global k) || is_precious_glob k) cpa, fl else
-    if get_bool "exp.addr-context" then drop_non_ptrs cpa, fl
-    else if get_bool "exp.no-int-context" then drop_ints cpa, fl
-    else cpa,fl
+    let f t f (cpa,fl) = if t then f cpa, fl else cpa, fl in
+    (cpa,fl) |>
+    f !GU.earlyglobs (CPA.filter (fun k v -> not (V.is_global k) || is_precious_glob k))
+    %> f (get_bool "exp.addr-context") drop_non_ptrs
+    %> f (get_bool "exp.no-int-context") drop_ints
 
   (* interpreter end *)
 
@@ -1274,13 +1276,13 @@ struct
     | Q.EvalInterval e -> begin
         match eval_rv ctx.ask ctx.global ctx.local e with
         | `Int e -> (
-              match ID.is_top e with
-                | true -> `Top
-                | false -> (
-                    match ID.minimal e, ID.maximal e with
-                      Some i, Some s -> `Interval (IntDomain.Interval.of_interval (i,s))
-                    | _ -> `Top
-                  )
+            match ID.is_top e with
+            | true -> `Top
+            | false -> (
+                match ID.minimal e, ID.maximal e with
+                  Some i, Some s -> `Interval (IntDomain.Interval.of_interval (i,s))
+                | _ -> `Top
+              )
           )
         | `Bot   -> `Bot
         | _      -> `Top
@@ -1531,7 +1533,6 @@ struct
               if List.fold_right f flist false && not (get_bool "exp.single-threaded") then begin
                 let new_fl =
                   if get_bool "exp.unknown_funs_spawn" then begin
-                    GU.multi_threaded := true;
                     Flag.make_main fl
                   end else
                     fl
@@ -1649,9 +1650,7 @@ struct
                       cpa, fl
                 | _ -> raise Deadcode
               end *)
-    | `ThreadCreate (f,x) ->
-      GU.multi_threaded := true;
-      cpa, Flag.make_main fl
+    | `ThreadCreate (f,x) -> cpa, Flag.make_main fl
     (* handling thread joins... sort of *)
     | `ThreadJoin (id,ret_var) ->
       begin match (eval_rv_with_query ctx.ask gs st ret_var) with
@@ -1782,8 +1781,7 @@ struct
       | None -> ()
      in
      unknown_function
-    | _ -> unknown_function
-
+    | _ -> unknown_function 
   let combine ctx (lval: lval option) fexp (f: varinfo) (args: exp list) (after: D.t) : D.t =
     let combine_one (loc,lf as st: D.t) ((fun_st,fun_fl) as fun_d: D.t) =
       (* This function does miscelaneous things, but the main task was to give the
@@ -1817,7 +1815,7 @@ struct
     | _ -> false
 
   (* remove this function and everything related to exp.ignored_threads *)
-  let is_special_ginorable_thread = function
+  let is_special_ignorable_thread = function
     | (_, `Lifted f) ->
       let fs = get_list "exp.ignored_threads" |> List.map Json.string in
       List.mem f.vname fs
@@ -1858,7 +1856,7 @@ struct
       in
       (BaseDomain.Flag.left_side file_phases , right_side)
     end else 
-      (Access.LSSSet.empty (), es)
+      Access.LSSSet.empty (), es
 end
 
 let _ =

@@ -1,5 +1,5 @@
 (**
-   New, untyped, path-based configuation subsystem.
+   New, untyped, path-based configuration subsystem.
 
    {v
   path' ::== \epsilon              (*  *)
@@ -23,6 +23,10 @@ open Config
 open Printf
 open JsonSchema
 open Json
+
+exception ConfigError of string
+
+let build_config = ref false
 
 (* Phase of the analysis (moved from GoblintUtil b/c of circular build...) *)
 let phase = ref 0
@@ -198,7 +202,12 @@ struct
       match !o, pth with
       | Object m, Select (key,pth) ->
         begin try set_value v (Object.find key !m) pth
-          with Not_found -> m := Object.add key (ref (create_new v pth)) !m end
+          with Not_found ->
+            if !build_config then
+              m := Object.add key (ref (create_new v pth)) !m
+            else
+              raise @@ ConfigError ("Unknown path "^ (sprintf2 "%a" print_path orig_pth))
+        end
       | Array a, Index (Int i, pth) ->
         set_value v (List.at !a i) pth
       | Array a, Index (App, pth) ->
@@ -240,15 +249,15 @@ struct
         st print;
       failwith "get_path_string"
 
-  (** Convienience functions for reading values. *)
+  (** Convenience functions for reading values. *)
   let get_int    = get_path_string number "int"
-  (** Convienience functions for reading values. *)
+  (** Convenience functions for reading values. *)
   let get_bool   = get_path_string bool   "bool"
-  (** Convienience functions for reading values. *)
+  (** Convenience functions for reading values. *)
   let get_string = get_path_string string "string"
-  (** Convienience functions for reading values. *)
+  (** Convenience functions for reading values. *)
   let get_length = List.length % (!) % get_path_string array "array"
-  (** Convienience functions for reading lists. *)
+  (** Convenience functions for reading lists. *)
   let get_list = List.map (!) % (!) % get_path_string array "array"
 
   (** Helper functions for writing values. *)
@@ -260,17 +269,17 @@ struct
     if tracing then trace "conf" "Setting '%s' to %a.\n" st prettyJson v;
     set_path_string st v
 
-  (** Convienience functions for writing values. *)
+  (** Convenience functions for writing values. *)
   let set_int    st i = set_path_string_trace st (Build.number i)
-  (** Convienience functions for writing values. *)
+  (** Convenience functions for writing values. *)
   let set_bool   st i = set_path_string_trace st (Build.bool i)
-  (** Convienience functions for writing values. *)
+  (** Convenience functions for writing values. *)
   let set_string st i = set_path_string_trace st (Build.string i)
-  (** Convienience functions for writing values. *)
+  (** Convenience functions for writing values. *)
   let set_null   st   = set_path_string_trace st Build.null
 
 
-  (** A convienience functions for writing values. *)
+  (** A convenience functions for writing values. *)
   let rec set_auto' st v =
     if v = "null" then set_null st else
       try set_bool st (bool_of_string v)
@@ -279,7 +288,7 @@ struct
       with Failure "int_of_string" ->
         set_string st v
 
-  (** The ultimate convienience functions for writing values. *)
+  (** The ultimate convenience function for writing values. *)
   let one_quote = Str.regexp "\'"
   let rec set_auto st s =
     if s="null" then set_null st else
@@ -299,7 +308,7 @@ struct
     if tracing then trace "conf" "Merging with '%s', resulting\n%a.\n" fn prettyJson !json_conf
 
 
-  (** Functions to drop one element of an 'array' *)
+  (** Function to drop one element of an 'array' *)
   let drop_index st i =
     let old = get_path_string array "array" st in
     if tracing then

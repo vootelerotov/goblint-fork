@@ -256,7 +256,7 @@ struct
     let map' f =
       let f x =
         try Some (f x)
-        with Not_found -> Legacy.Printf.fprintf !Messages.warn_out "Analysis '%s' not found. Ignoring.\n" x;None
+        with Not_found -> raise @@ ConfigError ("Analysis '"^x^"' not found. Abort!")
       in
       List.filter_map f
     in
@@ -506,7 +506,7 @@ struct
     in
     let add_access_struct conf ci =
       let (po,pd) = part_access ctx e None w in
-      Access.add_struct e w conf (`Struct (ci,NoOffset)) None (po,pd)
+      Access.add_struct e w conf (`Struct (ci,`NoOffset)) None (po,pd)
     in
     let has_escaped g = 
       match ctx.ask (Queries.MayEscape g) with
