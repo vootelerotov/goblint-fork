@@ -10,6 +10,7 @@ type categories = [
   | `Unlock
   | `ThreadCreate of exp * exp
   | `ThreadJoin   of exp * exp
+  | `FileOps      of exp
   | `Unknown      of string ]
 
 (** Categories of special functions *)

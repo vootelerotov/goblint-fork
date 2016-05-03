@@ -113,6 +113,26 @@ module NotSimple = struct
 
   module PhaseSet = struct
     include SetDomain.ToppedSet(Basetype.Phase)( struct let topname = "All" end)
+
+    let file_open : string option ref= ref  None
+
+    let file_release : string option ref = ref None
+
+    let set_file_open value = match !file_open with
+      | Some x -> if not (x= value) then failwith "Field _file_open should not change once set"
+      | None -> file_open := (Some value)
+
+    let set_file_release value = match !file_release with
+      | Some x -> if not (x= value) then  failwith "Field _file_close should not change once set"
+      | None -> file_release := (Some value)
+
+    let match_file_operation value =
+      let helper ref value = match !ref with
+	| Some x -> x = value
+	| None -> false
+      in
+      helper file_open value || helper file_release value
+
     let is_init_exit xs =
       let is_single x = match x with
 	| Basetype.Init -> true
@@ -130,10 +150,15 @@ module NotSimple = struct
     let exit_spawn_phase () = singleton Basetype.ExitSpawn
 
     let transform_to_file_phases name phases =
-      let name_to_phase name = match name with 
-	| "file_open" -> Basetype.FileOpen
-	| "file_release" -> Basetype.FileClose
-	| _ -> raise (Invalid_argument "Should be file_open/file_close")
+      let name_to_phase name =
+	let matches ref = match !ref with
+	  | Some x -> x = name
+	  | None -> false
+	in
+	if matches file_open then
+	Basetype.FileOpen else begin
+	  if matches file_release then Basetype.FileClose else failwith "Did not match a file phase"
+	end
       in
       let phase = name_to_phase name
       in

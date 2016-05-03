@@ -1396,7 +1396,8 @@ struct
         let nfl = create_tid v fl in
         let nst = make_entry ctx ~nfl:nfl v args in
 	let (ncpa,flag) = nst in 
-	let new_flag = if fd.svar.vname = "file_open" || fd.svar.vname ="file_release" 
+	Printf.printf "%s \n%!" fd.svar.vname;
+	let new_flag = if ConcDomain.NotSimple.PhaseSet.match_file_operation fd.svar.vname
 	  then
 	    let ((phases,unique),thread) = flag in
 	    (((BaseDomain.Flag.PhaseSet.transform_to_file_phases fd.svar.vname phases),unique),thread)   else flag
@@ -1494,6 +1495,56 @@ struct
     List.iter (uncurry ctx.spawn) forks;
     let cpa,fl as st = ctx.local in
     let gs = ctx.global in
+    let unknown_function = begin
+        let lv_list =
+          match lv with
+          | Some x -> [mkAddrOrStartOf x]
+          | None -> []
+        in
+        let st =
+          match LF.get_invalidate_action f.vname with
+          | Some fnc -> invalidate ctx.ask gs st (lv_list @ (fnc `Write  args));
+          | None -> (
+              (if f.vid <> dummyFunDec.svar.vid  && not (LF.use_special f.vname) then M.warn ("Function definition missing for " ^ f.vname));
+              let st_expr (v:varinfo) (value) a =
+                if is_global ctx.ask v && not (is_static v) then
+                  mkAddrOf (Var v, NoOffset) :: a
+                else a
+              in
+              let addrs = CPA.fold st_expr cpa (lv_list @ args) in
+              (* This rest here is just to see of something got spawned. *)
+              let flist = collect_funargs ctx.ask gs st args in
+              (* invalidate arguments for unknown functions *)
+              let (cpa,fl as st) = invalidate ctx.ask gs st addrs in
+              let f addr acc =
+                try
+                  let var = List.hd (AD.to_var_may addr) in
+                  let _ = Cilfacade.getdec var in true
+                with _ -> acc
+              in
+              (*
+               *  TODO: invalidate vars reachable via args
+               *  publish globals
+               *  if single-threaded: *call f*, privatize globals
+               *  else: spawn f
+               *)
+              if List.fold_right f flist false && not (get_bool "exp.single-threaded") then begin
+                let new_fl =
+                  if get_bool "exp.unknown_funs_spawn" then begin
+                    GU.multi_threaded := true;
+                    Flag.make_main fl
+                  end else
+                    fl
+                in
+                cpa,new_fl
+              end else
+                st
+            )
+        in
+        (* apply all registered abstract effects from other analysis on the base value domain *)
+        List.map (fun f -> f (fun lv -> set ctx.ask ctx.global st (eval_lv ctx.ask ctx.global st lv))) (LF.effects_for f.vname args) |> BatList.fold_left D.meet st
+    end
+    in
     match LF.classify f.vname args with
     | `Unknown "F59" (* strcpy *)
     | `Unknown "F60" (* strncpy *)
@@ -1641,55 +1692,97 @@ struct
     | `Unknown "__goblint_commit" -> assert_fn ctx (List.hd args) false true
     | `Unknown "__goblint_assert" -> assert_fn ctx (List.hd args) true true
     | `Assert e -> assert_fn ctx e (get_bool "dbg.debug") (not (get_bool "dbg.debug"))
-    | _ -> begin
-        let lv_list =
-          match lv with
-          | Some x -> [mkAddrOrStartOf x]
-          | None -> []
-        in
-        let st =
-          match LF.get_invalidate_action f.vname with
-          | Some fnc -> invalidate ctx.ask gs st (lv_list @ (fnc `Write  args));
-          | None -> (
-              (if f.vid <> dummyFunDec.svar.vid  && not (LF.use_special f.vname) then M.warn ("Function definition missing for " ^ f.vname));
-              let st_expr (v:varinfo) (value) a =
-                if is_global ctx.ask v && not (is_static v) then
-                  mkAddrOf (Var v, NoOffset) :: a
-                else a
-              in
-              let addrs = CPA.fold st_expr cpa (lv_list @ args) in
-              (* This rest here is just to see of something got spawned. *)
-              let flist = collect_funargs ctx.ask gs st args in
-              (* invalidate arguments for unknown functions *)
-              let (cpa,fl as st) = invalidate ctx.ask gs st addrs in
-              let f addr acc =
-                try
-                  let var = List.hd (AD.to_var_may addr) in
-                  let _ = Cilfacade.getdec var in true
-                with _ -> acc
-              in
-              (*
-               *  TODO: invalidate vars reachable via args
-               *  publish globals
-               *  if single-threaded: *call f*, privatize globals
-               *  else: spawn f
-               *)
-              if List.fold_right f flist false && not (get_bool "exp.single-threaded") then begin
-                let new_fl =
-                  if get_bool "exp.unknown_funs_spawn" then begin
-                    GU.multi_threaded := true;
-                    Flag.make_main fl
-                  end else
-                    fl
-                in
-                cpa,new_fl
-              end else
-                st
-            )
-        in
-        (* apply all registered abstract effects from other analysis on the base value domain *)
-        List.map (fun f -> f (fun lv -> set ctx.ask ctx.global st (eval_lv ctx.ask ctx.global st lv))) (LF.effects_for f.vname args) |> BatList.fold_left D.meet st
+    | `FileOps e ->
+      let exp_to_varinfo (x: Cil.exp) : Cil.varinfo =
+      match x with
+      | AddrOf lval ->
+      begin
+	match lval with
+	| (Var y,_ ) -> y
+	| (Mem (Lval (Var v,_)),Field (f,_)) ->  v
+	| _ -> failwith "Cil.lval is not a Var"
       end
+      | _ -> failwith "Cil.exp is not a AddrOf"
+      in
+      let f =
+        try
+	  exp_to_varinfo e
+        with Failure msg -> failwith ("Not able to parse file_ops Var, because: "^ msg)
+      in
+      Printf.printf "From special: %s , %b  \n%!" f.vname (is_static f) ;
+      let file_ops = CPA.find f cpa in
+      let parse_struct_from_compound (comp: ValueDomain.Compound.t) : ValueDomain.Structs.t option =  match comp with
+	  | `Struct x -> Some x
+	  | `Top -> None
+	  | _ -> failwith "Compound is not a struct"
+      in
+      Printf.printf "Parsed value %s \n %!" (ValueDomain.Compound.short 80 (file_ops));
+      let locate_field (name : string )(s : ValueDomain.Structs.t option) : ValueDomain.Compound.t option = 
+      let  helper (finfo : Cil.fieldinfo) value default  =
+	  if String.trim finfo.fname = name then Some (value) else default
+      in
+        match s with
+	| Some x -> ValueDomain.Structs.fold helper x None
+	| None -> None
+      in
+
+      let open_function = locate_field "open"  (parse_struct_from_compound file_ops) in
+      let release_function = locate_field "release" (parse_struct_from_compound file_ops) in
+      let parse_function_name_from_compound (comp: ValueDomain.Compound.t) : string option =
+	let helper (value: ValueDomain.AD.Addr.t) (v,first) =
+	  if (not first) then (value, true) else failwith  "More than one entry"
+	in
+	let extract_function_from_singleton_set set  = ValueDomain.AD.S.fold helper set (ValueDomain.AD.Addr.Bot,false)
+	in
+	let extract_name_from_lval (lval : ValueDomain.AD.Addr.t)  = match lval with
+	  | ValueDomain.AD.Addr.Addr (y,_ ) -> Some (y.vname)
+	  | ValueDomain.AD.Addr.NullPtr -> None
+	  | _ ->
+	    Printf.printf "lval: %s \n%!" (ValueDomain.AD.Addr.short 80 lval) ;
+	    failwith "Is not a Addr"
+	in
+	match comp with
+	| `Address ad ->
+	  begin
+	    match ad with
+	    | ValueDomain.AD.All -> None
+	    | ValueDomain.AD.Set set -> extract_name_from_lval (fst (extract_function_from_singleton_set set))
+	  end
+	| _ -> failwith "Expected value to be Address"
+      in
+      let () = match open_function with
+      | Some open_function -> begin
+	Printf.printf "open function : %s \n%!" (ValueDomain.Compound.short 80 open_function);
+	let open_function_name = try
+	    parse_function_name_from_compound open_function
+	  with Failure msg -> failwith ("Failed to parse name of the open function: " ^ msg)
+	in
+	match open_function_name with
+	| Some open_function_name -> begin
+	  Printf.printf "Open function name: %s \n%!" open_function_name;
+          ConcDomain.NotSimple.PhaseSet.set_file_open open_function_name
+        end
+	| None -> ()
+      end
+      | None -> ()
+      in
+      let () =  match release_function with
+      | Some release_function -> begin
+	let release_function_name = try
+	  parse_function_name_from_compound release_function
+	with Failure msg -> failwith ("Failed to parse name of the release function: " ^msg)
+	in
+	match release_function_name with
+	|Some release_function_name -> begin
+	  Printf.printf "Release function name: %s \n%!" release_function_name;
+	  ConcDomain.NotSimple.PhaseSet.set_file_release release_function_name
+	end
+	|None -> ()
+	end
+      | None -> ()
+     in
+     unknown_function
+    | _ -> unknown_function
 
   let combine ctx (lval: lval option) fexp (f: varinfo) (args: exp list) (after: D.t) : D.t =
     let combine_one (loc,lf as st: D.t) ((fun_st,fun_fl) as fun_d: D.t) =

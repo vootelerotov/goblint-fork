@@ -14,6 +14,7 @@ type categories = [
   | `Unlock
   | `ThreadCreate of exp * exp (* f  * x       *)
   | `ThreadJoin   of exp * exp (* id * ret_var *)
+  | `FileOps      of exp
   | `Unknown      of string ]
 
 let osek_renames = ref false
@@ -55,6 +56,11 @@ let classify' fn exps =
   | "mutex_unlock" | "ReleaseResource" | "_write_unlock" | "_read_unlock"
   | "pthread_mutex_unlock" | "__pthread_mutex_unlock" | "spin_unlock_irqrestore" | "up_read" | "up_write"
     -> `Unlock
+  | "cdev_init" ->
+    begin match exps with
+    | [_;fops] -> `FileOps fops
+    | _ -> M.bailwith "Cdev argument mismatch!"
+    end
   | x -> `Unknown x
 
 let classify fn exps =
